@@ -12,7 +12,7 @@
 (defn get-user
   "Gets a user from db. Optionally add WHERE constraints."
   [db-conn & {:keys [where]}]
-  (first (db/!select db-conn "dashboard_users" ["*"] (merge {} where))))
+  (first (db/!select db-conn "users" ["*"] (merge {} where))))
 
 (defn get-user-by-email
   "Gets a user from db by email address"
