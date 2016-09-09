@@ -24,12 +24,11 @@
                            :type "text/css"
                            :href
                            (str config/base-url "css/bootstrap.min.css")}]))
-           ;; (append (html [:link
-           ;;                {:rel "stylesheet"
-           ;;                 :type "text/css"
-           ;;                 :href
-           ;;                 (str config/base-url "css/sb-admin.css")}]))
-           )
+           (append (html
+                    [:link {:rel "stylesheet"
+                            :type "text/css"
+                            :href (str config/base-url
+                                       "css/font-awesome.min.css")}])))
 
   [:#base-url] (set-attr :value (str (:base-url x)))
 
