@@ -1,6 +1,7 @@
 (ns portal.handler
   (:require [buddy.auth.accessrules :refer [wrap-access-rules]]
             [clojure.walk :refer [keywordize-keys stringify-keys]]
+            [common.config :as config]
             [common.db :refer [!select conn]]
             [common.users :as users]
             [compojure.core :refer :all]
@@ -45,7 +46,7 @@
   ;;!! main page
   (GET "/" {cookies :cookies}
        (let [user-id (get-in cookies ["user-id" :value])
-             user (users/get-user (conn)
+             user (users/get-user nil ;;(conn)
                                   :where {:id user-id})]
          (str "<h1>Hello " (:name user) "</h1>")))
   ;;!! login / logout
@@ -65,11 +66,25 @@
        (-> (redirect "/login")
            (set-cookie "token" "null" {:max-age -1})
            (set-cookie "user-id" "null" {:max-age -1})))
-  ;; resources
-  (route/resources "/")
   ;; for aws webservices
   (GET "/ok" [] (response {:success true}))
-  )
+  ;; resources
+  (route/resources "/")
+  (route/not-found
+   {:status 404
+    :title "page not found"
+    :body "Page not found - 404 Placeholder"}))
+
+(defn wrap-fallback-exception
+  "Catch exceptions and present a server error message"
+  [handler]
+  (fn [request]
+    (if (= config/db-user "purplemasterprod")
+      (try
+        (handler request)
+        (catch Exception e
+          {:status 500 :body "Server Error - 500 Placeholder"}))
+      (handler request))))
 
 (def handler
   (->
@@ -79,4 +94,5 @@
    (wrap-access-rules {:rules login-rules})
    (wrap-cookies)
    (wrap-json-body)
-   (wrap-json-response)))
+   (wrap-json-response)
+   (wrap-fallback-exception)))
