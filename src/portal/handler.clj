@@ -46,7 +46,7 @@
   ;;!! main page
   (GET "/" {cookies :cookies}
        (let [user-id (get-in cookies ["user-id" :value])
-             user (users/get-user nil ;;(conn)
+             user (users/get-user (conn)
                                   :where {:id user-id})]
          (str "<h1>Hello " (:name user) "</h1>")))
   ;;!! login / logout
@@ -62,6 +62,8 @@
            (login/login (conn) (:email b) (:password b)
                         (or (get headers "x-forwarded-for")
                             remote-addr)))))
+  (GET "/exception" []
+       (throw (Exception. "I should ALWAYS throw an exception")))
   (GET "/logout" []
        (-> (redirect "/login")
            (set-cookie "token" "null" {:max-age -1})
