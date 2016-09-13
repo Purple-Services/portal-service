@@ -41,3 +41,45 @@
   (apply str (portal-login-template
               {:base-url
                (str config/base-url)})))
+
+(deftemplate portal-app-template "templates/index.html"
+  [x]
+  [:title] (content "Purple App Portal")
+
+  [:#pikaday-css] unwrap
+
+  [:head] (do->
+           (append (html [:meta
+                          {:name "viewport"
+                           :content "width=device-width, initial-scale=1"}]))
+           (append (html
+                    [:link {:rel "stylesheet"
+                            :type "text/css"
+                            :href
+                            (str config/base-url "css/bootstrap.min.css")}]))
+           (append (html
+                    [:link {:rel "stylesheet"
+                            :type "text/css"
+                            :href (str config/base-url "css/sb-admin.css")}]))
+           (append (html
+                    [:link {:rel "stylesheet"
+                            :type "text/css"
+                            :href (str config/base-url "css/portal.css")}]))
+           (append (html
+                    [:link {:rel "stylesheet"
+                            :type "text/css"
+                            :href (str config/base-url
+                                       "css/font-awesome.min.css")}])))
+
+  [:#base-url] (set-attr :value (str (:base-url x)))
+
+  [:#map] (set-attr :id "app")
+
+  [:#map-init]  (fn [node]
+                  (html [:script "portal_cljs.core.init_app();"])))
+
+(defn portal-app
+  []
+  (apply str (portal-app-template
+              {:base-url
+               (str config/base-url)})))

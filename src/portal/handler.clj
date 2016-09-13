@@ -44,11 +44,10 @@
 
 (defroutes portal-routes
   ;;!! main page
-  (GET "/" {cookies :cookies}
-       (let [user-id (get-in cookies ["user-id" :value])
-             user (users/get-user (conn)
-                                  :where {:id user-id})]
-         (str "<h1>Hello " (:name user) "</h1>")))
+  (GET "/" []
+       (-> (pages/portal-app)
+           response
+           wrap-page))
   ;;!! login / logout
   (GET "/login" []
        (-> (pages/portal-login)
