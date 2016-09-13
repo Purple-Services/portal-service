@@ -80,11 +80,13 @@
   "Catch exceptions and present a server error message"
   [handler]
   (fn [request]
-    (if (= config/db-user "purplemasterprod")
+    (if (= config/db-user "purplemaster")
       (try
         (handler request)
         (catch Exception e
-          {:status 500 :body "Server Error - 500 Placeholder"}))
+          (do
+            (.println *err* e)
+            {:status 500 :body "Server Error - 500 Placeholder"})))
       (handler request))))
 
 (def handler
