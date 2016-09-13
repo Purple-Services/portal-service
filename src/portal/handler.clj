@@ -1,6 +1,6 @@
 (ns portal.handler
   (:require [buddy.auth.accessrules :refer [wrap-access-rules]]
-            [clojure.tools.logging :as log]
+            [clj-time.core :as time]
             [clojure.walk :refer [keywordize-keys stringify-keys]]
             [common.config :as config]
             [common.db :refer [!select conn]]
@@ -86,7 +86,7 @@
         (handler request)
         (catch Exception e
           (do
-            (log/error e)
+            (.println *err* (str (time/now) " " e))
             {:status 500 :body "Server Error - 500 Placeholder"})))
       (handler request))))
 

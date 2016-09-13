@@ -9,7 +9,6 @@
                  [compojure "1.5.1"]
                  [enlive "1.1.6"]
                  [org.clojure/clojure "1.9.0-alpha11"]
-                 [org.clojure/tools.logging "0.3.1"]
                  [ring/ring-core "1.5.0"]
                  [ring/ring-json "0.4.0"]
                  [ring-cors "0.1.8"]]
