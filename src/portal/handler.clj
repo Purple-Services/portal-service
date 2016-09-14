@@ -1,5 +1,6 @@
 (ns portal.handler
   (:require [buddy.auth.accessrules :refer [wrap-access-rules]]
+            [clj-time.core :as time]
             [clojure.walk :refer [keywordize-keys stringify-keys]]
             [common.config :as config]
             [common.db :refer [!select conn]]
@@ -11,8 +12,7 @@
             [ring.middleware.cookies :refer [wrap-cookies]]
             [ring.middleware.cors :refer [wrap-cors]]
             [ring.middleware.json :refer [wrap-json-body wrap-json-response]]
-            [ring.util.response :refer [header set-cookie response redirect]]
-            ))
+            [ring.util.response :refer [header set-cookie response redirect]]))
 
 (defn wrap-page [resp]
   (header resp "content-type" "text/html; charset=utf-8"))
@@ -56,11 +56,19 @@
   (POST "/login" {body :body
                   headers :headers
                   remote-addr :remote-addr}
-        (response
-         (let [b (keywordize-keys body)]
-           (login/login (conn) (:email b) (:password b)
-                        (or (get headers "x-forwarded-for")
-                            remote-addr)))))
+        (let [b (keywordize-keys body)
+              login-result (login/login (conn) (:email b) (:password b)
+                                        (or (get headers "x-forwarded-for")
+                                            remote-addr))]
+          (if (:success login-result)
+            (-> (response {:success true})
+                (merge {:cookies
+                        {"token" {:value (:token login-result)
+                                  :http-only true
+                                  :max-age 7776000}
+                         "user-id" {:value (get-in login-result [:user :id])
+                                    :max-age 7776000}}}))
+            (response login-result))))
   (GET "/exception" []
        (throw (Exception. "I should ALWAYS throw an exception")))
   (GET "/logout" []
@@ -85,7 +93,7 @@
         (handler request)
         (catch Exception e
           (do
-            (.println *err* e)
+            (.println *err* (str (time/now) " " e))
             {:status 500 :body "Server Error - 500 Placeholder"})))
       (handler request))))
 
