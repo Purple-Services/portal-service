@@ -1,6 +1,6 @@
-(defproject portal "0.3.0-SNAPSHOT"
-  :description "FIXME: write description"
-  :url "http://example.com/FIXME"
+(defproject portal "0.5.0-SNAPSHOT"
+  :description "Purple Portal Service"
+  :url "http://dashboard.purplapp.com"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[buddy/buddy-auth "0.8.1"]
