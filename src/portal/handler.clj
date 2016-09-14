@@ -94,6 +94,7 @@
         (handler request)
         (catch Exception e
           (do
+            (.println *err* (str (time/now) " " e))
             {:status 500 :body "Server Error - 500 Placeholder"})))
       (handler request))))
 
