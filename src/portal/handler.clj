@@ -39,6 +39,8 @@
     :handler (constantly true)}
    {:pattern #".*/logout" ; this route must always be allowed access
     :handler (constantly true)}
+   {:pattern #".*/images/.*" ; this route must always be allowed access
+    :handler (constantly true)}
    {:pattern #".*(/.*|$)"
     :handler valid-session-wrapper?
     :redirect "/login"}])
