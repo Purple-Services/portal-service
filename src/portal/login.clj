@@ -1,5 +1,11 @@
 (ns portal.login
-  (:require [common.db :as db]
+  (:require [clj-time.coerce :as c]
+            [clj-time.core :as t]
+            [clj-time.format :as f]
+            [clj-time.local :as l]
+            [clojure.java.jdbc :as sql]
+            [clojure.string :as string]
+            [common.db :as db]
             [common.users :refer [valid-email? valid-password?
                                   auth-native?]]
             [common.util :as util]
@@ -27,19 +33,42 @@
                 "sessions"
                 {:user_id (:id user)
                  :token token
-                 :ip (or client-ip "")})
+                 :ip (or client-ip "")
+                 :source "portal"})
     {:success true
      :token token
      :user  (select-keys user safe-authd-user-keys)}))
 
+(defn clear-portal-sessions
+  "Clear out all portal sessions that are older than date where date is the
+  time in unix-epoch seconds"
+  [db-conn user date]
+  (let [user-sessions (db/!select db-conn "sessions" ["*"]
+                                  {:user_id (:id user)
+                                   :source "portal"})
+        expired-sessions (filter #(< (-> % :timestamp_created .getTime) date)
+                                 user-sessions)
+        expired-sessions-id-string (str "id in ("
+                                        (string/join
+                                         ","
+                                         (map :id expired-sessions)) ")")]
+    (when-not (empty? expired-sessions)
+      (sql/with-connection (db/conn) (sql/delete-rows
+                                      "sessions"
+                                      [expired-sessions-id-string])))))
+
 (defn login
   "Given an email, password and client-ip, create a new session and return it"
   [db-conn email password client-ip]
-  (let [user (get-user-by-email db-conn email)]
+  (let [user (get-user-by-email db-conn email)
+        session-expiration (c/to-long (t/minus (l/local-now)
+                                               (t/days 90)))]
     (cond (nil? user)
           {:success false
            :message "Incorrect email / password combination."}
           (auth-native? user password)
-          (init-session db-conn user client-ip)
+          (do
+            (clear-portal-sessions db-conn user session-expiration)
+            (init-session db-conn user client-ip))
           :else {:success false
                  :message "Incorrect email / password combination."})))
