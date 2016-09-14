@@ -12,6 +12,7 @@
             [ring.middleware.cookies :refer [wrap-cookies]]
             [ring.middleware.cors :refer [wrap-cors]]
             [ring.middleware.json :refer [wrap-json-body wrap-json-response]]
+            [ring.middleware.stacktrace :refer [wrap-stacktrace-log]]
             [ring.util.response :refer [header set-cookie response redirect]]))
 
 (defn wrap-page [resp]
@@ -106,4 +107,5 @@
    (wrap-cookies)
    (wrap-json-body)
    (wrap-json-response)
+   (wrap-stacktrace-log)
    (wrap-fallback-exception)))
