@@ -1,0 +1,6 @@
+#!/bin/bash
+filename=$1
+echo 'Processing SQL...'
+perl -pi -e 's/^.*utf8mb4.*$/-- $_/' $filename
+perl -pi -e "s/text NOT NULL/text NOT NULL DEFAULT ''/" $filename
+echo 'Done Processing SQL'

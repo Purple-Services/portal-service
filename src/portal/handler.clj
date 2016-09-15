@@ -68,9 +68,11 @@
                 (merge {:cookies
                         {"token" {:value (:token login-result)
                                   :http-only true
+                                  :path config/base-url
                                   :max-age 7776000}
                          "user-id" {:value (get-in login-result [:user :id])
-                                    :max-age 7776000}}}))
+                                    :max-age 7776000}
+                         }}))
             (response login-result))))
   (GET "/exception" []
        (throw (Exception. "I should ALWAYS throw an exception")))
