@@ -1,5 +1,5 @@
-(ns portal.test.login
-  (:require [clojure.test :refer [use-fixtures is]]
+(ns portal.test.login-test
+  (:require [clojure.test :refer [use-fixtures is run-tests deftest testing]]
             [common.db :as db]
             [common.util :as util]
             [portal.login :as login]
@@ -24,3 +24,10 @@
                              :name full-name}))))
 
 
+(deftest user-can-login
+  (testing "A user can be logged in"
+    (let [user {:platform-id "foo@bar.com"
+                :password "foobar"
+                :full-name "Foo Bar"}]
+      (register-user! (merge user                       
+                             {:db-conn (db/conn) })))))
