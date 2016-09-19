@@ -15,6 +15,14 @@
 (def test-port 5744)
 (def base-url (env :base-url))
 
+;; common elements
+(def logout-lg-xpath
+  {:xpath "//ul/li[contains(@class,'hidden-lg')]//a[text()='LOG OUT']"})
+(def logout-sm-xpath
+  {:xpath "//ul[contains(@class,'hidden-xs')]/li//a[text()='LOG OUT']"})
+
+(def login-xpath {:xpath "//button[text()='LOGIN']"})
+
 (defn start-server [port]
   (let [_ (setup-ebdb-test-pool!)
         server (run-jetty #'portal.handler/handler
@@ -51,25 +59,46 @@
 
 (use-fixtures :each with-browser with-server)
 
-(defn login-client
-  "Logout and login with the client using email and password as credentials"
+(defn login-portal
+  "Login with the client using email and password as credentials"
   [email password]
   (go-to-login-page)
   (let [email-input    (find-element {:xpath "//input[@type='text']"})
         password-input (find-element {:xpath "//input[@type='password']"})]
     (input-text email-input email)
     (input-text password-input password)
-    (click (find-element {:xpath "//button[text()='LOGIN']"}))))
+    (click (find-element login-xpath))))
 
+(defn logout-portal
+  "Logout, assuming the portal has already been logged into"
+  []
+  (click (if (visible? (find-element logout-lg-xpath))
+           (find-element logout-lg-xpath)
+           (find-element logout-sm-xpath))))
 
 (deftest login-tests
   (let [email "foo@bar.com"
-        password "foobar"]
+        password "foobar"
+        alert-danger {:xpath (str "//div[contains(@class,'alert-danger')]")}
+        logout {:xpath "//a[text()='LOG OUT']"}
+        full-name "Foo Bar"]
     (testing "Login with a username and password that doesn't exist"
       (go-to-login-page)
-      (login-client email password)
+      (login-portal email password)
       (wait-until #(exists?
-                    {:xpath (str "//div[contains(@class,'alert-danger')]")}))
+                    alert-danger))
       (is (= (text (find-element
-                    {:xpath (str "//div[contains(@class,'alert-danger')]")}))
-             "Error:\nError: Incorrect email / password combination.")))))
+                    alert-danger))
+             "Error:\nError: Incorrect email / password combination.")))
+    (testing "Create a user, login with credentials"
+      (register-user! {:db-conn (db/conn)
+                       :platform-id email
+                       :password password
+                       :full-name full-name})
+      (go-to-login-page)
+      (login-portal email password)
+      (wait-until #(exists? logout))
+      (is (exists? (find-element logout))))
+    (testing "Log back out."
+      (logout-portal)
+      (is (exists? (find-element login-xpath))))))
