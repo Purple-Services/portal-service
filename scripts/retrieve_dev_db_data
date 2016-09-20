@@ -1,0 +1,7 @@
+#!/bin/bash
+# see: http://stackoverflow.com/a/10454782/600830
+# see: http://dev.mysql.com/doc/refman/5.1/en/mysqldump.html#option_mysqldump_single-transaction
+filename=$1
+echo 'Retrieving database...'
+mysqldump -u purplemaster -pHHjdnb873HHjsnhhd -h purple-dev-db.cqxql2suz5ru.us-west-2.rds.amazonaws.com --ignore-table=ebdb.state_log --single-transaction --quick ebdb > $filename
+echo 'Done retrieving'
