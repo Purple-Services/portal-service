@@ -5,7 +5,9 @@
             [clj-time.local :as l]
             [clojure.java.jdbc :as sql]
             [clojure.string :as string]
+            [common.config :as config]
             [common.db :as db]
+            [common.sendgrid :as sendgrid]
             [common.users :refer [valid-email? valid-password?
                                   auth-native?]]
             [common.util :as util]
@@ -72,3 +74,53 @@
             (init-session db-conn user client-ip))
           :else {:success false
                  :message "Incorrect email / password combination."})))
+
+(defn forgot-password
+  "Only for native accounts; platform-id is email address."
+  [db-conn email]
+  (let [user (get-user-by-email db-conn email)]
+    (if user
+      (let [reset-key (util/rand-str-alpha-num 22)]
+        (db/!update db-conn
+                 "users"
+                 {:reset_key reset-key}
+                 {:id (:id user)})
+        (sendgrid/send-template-email
+         email
+         "Forgot Password?"
+         (str "<h2 style=\"margin: 17px 0px 25px 0px; font-size: 2.5em; "
+              "line-height: 1.1em; font-weight: 300; text-align: center; "
+              "font-family: 'HelveticaNeue-Light','Helvetica Neue Light',"
+              "Helvetica,Arial,sans-serif;\">"
+              "Forgot Password?"
+              "</h2>"
+              "Hi " (:name user) ","
+              "<br />"
+              "<br />" "Please click the link below to change your password:"
+              "<br />" config/base-url "user/reset-password/" reset-key
+              "<br />"
+              "<br />" "Thanks,"
+              "<br />" "Purple"))
+        {:success true
+         :message (str "An email has been sent to "
+                       email
+                       ". Please click the link included in "
+                       "that message to reset your password.")})
+      {:success false
+       :message (str "Sorry, we don't recognize that email address. Are you "
+                     "sure you didn't use Facebook or Google to log in?")})))
+
+(defn change-password
+  "Only for native accounts."
+  [db-conn reset-key password]
+  (if-not (string/blank? reset-key) ;; <-- very important check, for security
+    (if (valid-password? password)
+      (db/!update db-conn
+               "users"
+               {:password_hash (bcrypt/encrypt password)
+                :reset_key ""}
+               {:reset_key reset-key})
+      {:success false
+       :message "Password must be at least 6 characters."})
+    {:success false
+     :message "Error: Reset Key is blank."}))
