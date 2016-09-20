@@ -1,0 +1,7 @@
+#!/bin/bash
+filename=../database/ebdb-dev-$(date +%Y-%m-%d-at-%H%M).sql
+retrieve_dev_db_data $filename
+clean_sql $filename
+# obviously need to have this setup locally. See app-service/scripts/setupdb.clj
+# for more info on setting up a local db
+mysql -u purplemaster -plocalpurpledevelopment2015 ebdb_dev < $filename
