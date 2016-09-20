@@ -28,7 +28,7 @@
                              :name full-name}))))
 
 
-(deftest user-can-login
+(deftest user-can-login-and-logout
   (let [email "foo@bar.com"
         password "foobar"
         user {:platform-id email
@@ -56,3 +56,30 @@
         (is (= 2 (count (db/!select conn "sessions" ["*"]
                                     {:user_id (:id user)
                                      :source "portal"}))))))))
+
+(deftest user-can-reset-password
+  (let [email "foo@bar.com"
+        password "foobar"
+        user {:platform-id email
+              :password password
+              :full-name "Foo Bar"}
+        conn (db/conn)]
+    (testing "A user can be logged in"
+      (register-user! (merge user
+                             {:db-conn conn}))
+      (is (:success
+           (login/login conn email password "127.0.0.1"))))
+    (testing "User forgot password"
+      (with-redefs [common.sendgrid/send-template-email
+                    (fn [to subject message]
+                      (println "No reset password email was actually sent"))]
+        (is (:success (login/forgot-password conn email)))))
+    (let [user (login/get-user-by-email conn email)
+          reset-key (:reset_key user)
+          new-password "bazqux"]
+      ;; password is changed
+      (testing "User can reset password"
+        (is (:success (login/change-password conn reset-key new-password))))
+      (testing "User can login with new password"
+        (is (:success
+             (login/login conn email new-password "127.0.0.1")))))))
