@@ -84,4 +84,6 @@
   [test]
   (setup-ebdb-test-pool!)
   (test)
-  (clear-test-database))
+  (clear-test-database)
+  ;; close out the db connection
+  (.close (:datasource (db/conn))))

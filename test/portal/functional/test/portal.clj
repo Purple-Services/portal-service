@@ -34,6 +34,8 @@
 (defn stop-server [server]
   (do
     (clear-test-database)
+    ;; close out the db connection
+    (.close (:datasource (db/conn)))
     (.stop server)))
 
 (defn with-server [t]

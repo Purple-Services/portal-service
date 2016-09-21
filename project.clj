@@ -1,4 +1,4 @@
-(defproject portal "0.5.0-SNAPSHOT"
+(defproject portal "0.5.1-SNAPSHOT"
   :description "Purple Portal Service"
   :url "http://dashboard.purplapp.com"
   :license {:name "Eclipse Public License"
@@ -15,7 +15,10 @@
                  [ring/ring-json "0.4.0"]
                  [ring-cors "0.1.8"]]
   :plugins [[lein-ring "0.9.7"]
-            [lein-beanstalk "0.2.7"]]
+            [lein-beanstalk "0.2.7"]
+            [com.jakemccrary/lein-test-refresh "0.17.0"]]
+  :test-refresh {:notify-on-success false
+                 :notify-command ["growlnotify" "-m"]}
   :ring {:handler portal.handler/handler
          :port 3002
          :auto-reload? true
