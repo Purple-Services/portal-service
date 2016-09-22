@@ -100,6 +100,7 @@ tbody > tr.active > td {
     margin-top: -8px;
 }
 
+
 .fake-link {
     font-size: 16px;
     color: #3498db;
@@ -132,4 +133,26 @@ tbody > tr.active > td {
 .forgot-password {
     float: right;
     color: #000;
+}
+
+.purple-div-header {
+    background-color: #4E4084;
+    padding-top: 1em;
+}
+
+.purple-login-logo {
+    display: block;
+    margin: 0 auto;
+}
+
+.purple-login-row {
+    padding-top: 8em;
+}
+
+.light-purple-color {
+    color: #68618C;
+}
+
+.orange-color {
+    color: #F98559;
 }

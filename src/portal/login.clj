@@ -28,6 +28,11 @@
   (get-user db-conn
             :where {:email email}))
 
+(defn get-user-by-reset-key
+  "Gets a user from db by reset_key (for password reset)."
+  [db-conn reset-key]
+  (get-user db-conn :where {:reset_key reset-key}))
+
 (defn init-session
   [db-conn user client-ip]
   (let [token (util/new-auth-token)]
@@ -97,7 +102,7 @@
               "Hi " (:name user) ","
               "<br />"
               "<br />" "Please click the link below to change your password:"
-              "<br />" config/base-url "user/reset-password/" reset-key
+              "<br />" config/base-url "reset-password/" reset-key
               "<br />"
               "<br />" "Thanks,"
               "<br />" "Purple"))
@@ -123,4 +128,4 @@
       {:success false
        :message "Password must be at least 6 characters."})
     {:success false
-     :message "Error: Reset Key is blank."}))
+     :message "Reset Key is blank."}))

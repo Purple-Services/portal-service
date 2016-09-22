@@ -54,6 +54,18 @@
   (t)
   (stop-browser))
 
+
+;; this function is used to slow down clojure so the browser has time to catch
+;; up. If you are having problems with tests passing, particuarly if they appear
+;; to randomly fail, try increasing the amount of sleep time before the call
+;; that is failing
+(defn sleep
+  "Sleep for ms."
+  [& [ms]]
+  (let [default-ms 700
+        time (or ms default-ms)]
+    (Thread/sleep time)))
+
 (defn go-to-login-page
   "Navigate to the portal"
   []
@@ -89,9 +101,9 @@
       (login-portal email password)
       (wait-until #(exists?
                     alert-danger))
-      (is (= (text (find-element
-                    alert-danger))
-             "Error:\nError: Incorrect email / password combination.")))
+      (is (= "Error: Incorrect email / password combination."
+             (text (find-element
+                    alert-danger)))))
     (testing "Create a user, login with credentials"
       (register-user! {:db-conn (db/conn)
                        :platform-id email
