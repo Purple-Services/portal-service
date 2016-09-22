@@ -27,19 +27,22 @@
     (users/valid-session? (conn) user-id token)))
 
 (def login-rules
-  [{:pattern #"/ok" ; this route must always be allowed access
+  ;; all of these routes must always be allowed access for proper
+  [{:pattern #"/ok"
     :handler (constantly true)}
-   {:pattern #".*/css/.*" ; this route must always be allowed access
+   {:pattern #".*/css/.*"
     :handler (constantly true)}
-   {:pattern #".*/js/.*" ; this route must always be allowed access
+   {:pattern #".*/js/.*"
     :handler (constantly true)}
-   {:pattern #".*/fonts/.*" ; this route must always be allowed access
+   {:pattern #".*/fonts/.*"
     :handler (constantly true)}
-   {:pattern #".*/login" ; this route must always be allowed access
+   {:pattern #".*/login"
     :handler (constantly true)}
-   {:pattern #".*/logout" ; this route must always be allowed access
+   {:pattern #".*/logout"
     :handler (constantly true)}
-   {:pattern #".*/images/.*" ; this route must always be allowed access
+   {:pattern #".*/images/.*"
+    :handler (constantly true)}
+   {:pattern #"/reset-password/*"
     :handler (constantly true)}
    {:pattern #".*(/.*|$)"
     :handler valid-session-wrapper?
@@ -74,20 +77,33 @@
                                     :max-age 7776000}
                          }}))
             (response login-result))))
-  (GET "/exception" []
-       (throw (Exception. "I should ALWAYS throw an exception")))
   (GET "/logout" []
        (-> (redirect "/login")
            (set-cookie "token" "null" {:max-age -1})
            (set-cookie "user-id" "null" {:max-age -1})))
+  ;; Reset password routes
+  (POST "/forgot-password" {body :body}
+        (response
+         (let [b (keywordize-keys body)]
+           (login/forgot-password (conn)
+                                  ;; 'platform_id' is email address
+                                  (:email b)))))
+  (GET "/reset-password/:reset-key" [reset-key]
+       (-> (pages/reset-password (conn) reset-key)
+           response
+           wrap-page))
+  (POST "/reset-password" {body :body}
+        (response
+         (let [b (keywordize-keys body)]
+           (login/change-password (conn) (:reset-key b) (:password b)))))
   ;; for aws webservices
   (GET "/ok" [] (response {:success true}))
   ;; resources
   (route/resources "/")
   (route/not-found
    {:status 404
-    :title "page not found"
-    :body "Page not found - 404 Placeholder"}))
+    :body (pages/portal-not-found)
+    :title "Page not found"}))
 
 (defn wrap-fallback-exception
   "Catch exceptions and present a server error message"
