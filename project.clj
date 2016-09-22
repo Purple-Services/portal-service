@@ -1,4 +1,4 @@
-(defproject portal "0.5.1-SNAPSHOT"
+(defproject portal "0.5.5-SNAPSHOT"
   :description "Purple Portal Service"
   :url "http://dashboard.purplapp.com"
   :license {:name "Eclipse Public License"
