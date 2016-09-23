@@ -64,6 +64,11 @@
   ;; populate the tables
   (create-tables-and-populate-database ebdb-test-config))
 
+(defn clear-and-populate-test-database-fixture
+  [t]
+  (clear-and-populate-test-database)
+  (t))
+
 (defn setup-ebdb-test-pool!
   []
   (db/set-pooled-db! ebdb-test-config)
