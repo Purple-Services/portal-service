@@ -8,8 +8,8 @@
             [common.util :as util]
             [portal.login :as login]
             [crypto.password.bcrypt :as bcrypt]
-            [portal.test.db-tools :refer [setup-ebdb-test-for-conn-fixture
-                                          setup-ebdb-test-pool!]]))
+            [portal.test.db-tools :refer [setup-ebdb-test-pool!
+                                          setup-ebdb-test-for-conn-fixture]]))
 
 (use-fixtures :each setup-ebdb-test-for-conn-fixture)
 
@@ -56,6 +56,7 @@
         (is (= 2 (count (db/!select conn "sessions" ["*"]
                                     {:user_id (:id user)
                                      :source "portal"}))))))))
+
 
 (deftest user-can-reset-password
   (let [email "foo@bar.com"

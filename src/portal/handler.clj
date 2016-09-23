@@ -42,7 +42,9 @@
     :handler (constantly true)}
    {:pattern #".*/images/.*"
     :handler (constantly true)}
-   {:pattern #"/reset-password/*"
+   {:pattern #"/reset-password/.*"
+    :handler (constantly true)}
+   {:pattern #"/forgot-password"
     :handler (constantly true)}
    {:pattern #".*(/.*|$)"
     :handler valid-session-wrapper?
