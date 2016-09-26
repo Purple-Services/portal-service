@@ -100,6 +100,7 @@ tbody > tr.active > td {
     margin-top: -8px;
 }
 
+
 .fake-link {
     font-size: 16px;
     color: #3498db;
@@ -114,4 +115,44 @@ tbody > tr.active > td {
 
 .courier-inactive {
     color: #ff0000;
+}
+
+ /* this override bootstrap.css */
+.form-control-purple {
+    display: block;
+    width: 100%;
+    height: 34px;
+    padding: 6px 12px;
+    font-size: 14px;
+    line-height: 1.42857143;
+    border-width: 0 0 1px 0;
+    border-style: solid;
+    border-color: #000;
+}
+
+.forgot-password {
+    float: right;
+    color: #000;
+}
+
+.purple-div-header {
+    background-color: #4E4084;
+    padding-top: 1em;
+}
+
+.purple-login-logo {
+    display: block;
+    margin: 0 auto;
+}
+
+.purple-login-row {
+    padding-top: 8em;
+}
+
+.light-purple-color {
+    color: #68618C;
+}
+
+.orange-color {
+    color: #F98559;
 }

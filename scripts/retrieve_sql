@@ -1,0 +1,4 @@
+#!/bin/bash
+filename=../database/ebdb.sql
+retrieve_dev_db_structure $filename
+clean_sql $filename
