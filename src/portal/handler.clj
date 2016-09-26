@@ -44,6 +44,8 @@
     :handler (constantly true)}
    {:pattern #"/reset-password/.*"
     :handler (constantly true)}
+   {:pattern #"/reset-password"
+    :handler (constantly true)}
    {:pattern #"/forgot-password"
     :handler (constantly true)}
    {:pattern #".*(/.*|$)"
@@ -111,7 +113,7 @@
   "Catch exceptions and present a server error message"
   [handler]
   (fn [request]
-    (if (= config/db-user "purplemaster")
+    (if (= config/db-user "purplemasterprod")
       (try
         (handler request)
         (catch Exception e

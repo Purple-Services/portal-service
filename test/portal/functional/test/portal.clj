@@ -1,5 +1,6 @@
 (ns portal.functional.test.portal
   (:require [clj-webdriver.taxi :refer :all]
+            [clojure.string :as string]
             [clojure.test :refer [deftest is testing use-fixtures]]
             [common.db :as db]
             [environ.core :refer [env]]
@@ -8,6 +9,7 @@
                                           setup-ebdb-test-for-conn-fixture
                                           clear-and-populate-test-database
                                           clear-and-populate-test-database-fixture]]
+            [portal.login :as login]
             [portal.test.login-test :refer [register-user!]]
             [portal.handler]
             [ring.adapter.jetty :refer [run-jetty]]))
@@ -19,7 +21,6 @@
 ;;   (when (string= (buffer-name) "portal.clj")
 ;;     (cider-interactive-eval
 ;;      "(reset-vars!)")))
-
 ;; (add-hook 'cider-mode-hook
 ;; 	  (lambda ()
 ;; 	    (add-hook 'cider-file-loaded-hook 'portal-clj-reset)))
@@ -199,7 +200,8 @@
 (deftest forgot-password
   (let [email "james@purpleapp.com"
         password "foobar"
-        full-name "James Borden"]
+        full-name "James Borden"
+        reset-button-xpath {:xpath "//button[text()='RESET PASSWORD']"}]
     (testing "User tries to reset key without reset key"
       (go-to-uri "reset-password/vs5YI50YZptjyONSoIofm7")
       (is (= (text (find-element {:xpath "//h1[text()='Page Not Found']"}))
@@ -220,5 +222,52 @@
         (go-to-uri "login")
         (input-text (find-element  login-email-input) email)
         (click (find-element forgot-password-link))
-        (check-success-alert "An email has been sent to james@purpleapp.com. Please click the link included in that message to reset your password."))
-      )))
+        (check-success-alert "An email has been sent to james@purpleapp.com. Please click the link included in that message to reset your password.")
+        (let [reset-key (:reset_key (login/get-user-by-email
+                                     (db/conn) email))
+              reset-url (str "reset-password/" reset-key)
+              password-xpath {:xpath "//input[@type='password' and @placeholder='password']"}
+              confirm-password-xpath {:xpath "//input[@type='password' and @placeholder='confirm password']"}
+              new-password "bazqux"
+              wrong-confirm-password "quxxcorgi"
+              too-short "foo"]
+          (go-to-uri reset-url)
+          (testing "User tries to reset the password with non-matching passwords"
+            (input-text (find-element password-xpath) new-password)
+            (input-text (find-element confirm-password-xpath)
+                        wrong-confirm-password)
+            (click (find-element reset-button-xpath))
+            (check-error-alert "Error: Passwords do not match."))
+          (testing "User tries to reset the password with a password that is too short"
+            (clear (find-element password-xpath))
+            (wait-until #(string/blank?
+                          (value (find-element password-xpath))))
+            (is (string/blank?
+                 (value (find-element password-xpath))))
+            (input-text (find-element password-xpath) too-short)
+            (clear (find-element confirm-password-xpath))
+            (wait-until #(string/blank?
+                          (value (find-element confirm-password-xpath))))
+            (is (string/blank?
+                 (value (find-element confirm-password-xpath))))
+            (input-text (find-element confirm-password-xpath) too-short)
+            (click (find-element reset-button-xpath))
+            (check-error-alert "Error: Password must be at least 6 characters."))
+          (testing "User can still login, even though there is a reset key"
+            (go-to-uri "login")
+            (login-portal email password))
+          (testing "User can reset password"
+            (go-to-uri "logout")
+            (go-to-uri reset-url)
+            (input-text (find-element password-xpath) new-password)
+            (input-text (find-element confirm-password-xpath)
+                        new-password)
+            (click (find-element reset-button-xpath))
+            ;; log in with new password
+            (testing "...and login with new password"
+              (wait-until #(exists? login-email-input))
+              (input-text login-email-input email)
+              (input-text password-xpath new-password)
+              (click (find-element login-button))
+              (wait-until #(exists? {:xpath "//a[text()='LOG OUT']"}))
+              (is (exists? {:xpath "//a[text()='LOG OUT']"})))))))))
