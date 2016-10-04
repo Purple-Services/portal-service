@@ -335,7 +335,7 @@ CREATE TABLE `sessions` (
   `source` varchar(100) DEFAULT '',
   `timestamp_created` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=2796 DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB AUTO_INCREMENT=2834 DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -474,6 +474,20 @@ CREATE TABLE `zctas` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
+-- Table structure for table `zips`
+--
+
+DROP TABLE IF EXISTS `zips`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `zips` (
+  `zip` varchar(20) NOT NULL COMMENT 'the zip code',
+  `zones` varchar(2000) DEFAULT NULL COMMENT 'comm-separated list of zone ids that this zip is a member of',
+  PRIMARY KEY (`zip`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
 -- Table structure for table `zones`
 --
 
@@ -481,6 +495,23 @@ DROP TABLE IF EXISTS `zones`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `zones` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) NOT NULL,
+  `rank` int(11) NOT NULL DEFAULT '0',
+  `active` tinyint(1) NOT NULL,
+  `config` text,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=128 DEFAULT CHARSET=utf8;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `zones_old`
+--
+
+DROP TABLE IF EXISTS `zones_old`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `zones_old` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `active` tinyint(1) NOT NULL DEFAULT '0',
   `zip_codes` mediumtext NOT NULL DEFAULT '',
@@ -656,4 +687,4 @@ CREATE TABLE `zones` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2016-09-20 16:33:38
+-- Dump completed on 2016-09-26 15:00:38

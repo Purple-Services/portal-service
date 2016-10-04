@@ -4,10 +4,10 @@
             [clj-time.format :as f]
             [clj-time.local :as l]
             [clojure.test :refer [use-fixtures is run-tests deftest testing]]
+            [crypto.password.bcrypt :as bcrypt]
             [common.db :as db]
             [common.util :as util]
             [portal.login :as login]
-            [crypto.password.bcrypt :as bcrypt]
             [portal.test.db-tools :refer [setup-ebdb-test-pool!
                                           setup-ebdb-test-for-conn-fixture]]))
 
