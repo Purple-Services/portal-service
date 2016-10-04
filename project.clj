@@ -6,7 +6,7 @@
   :dependencies [[buddy/buddy-auth "0.8.1"]
                  [clj-time "0.12.0"]
                  [clj-webdriver "0.7.2"]
-                 [common "1.1.4-portal-fork-SNAPSHOT"]
+                 [common "2.0.1-SNAPSHOT"]
                  [compojure "1.5.1"]
                  [enlive "1.1.6"]
                  [org.clojure/clojure "1.9.0-alpha11"]
