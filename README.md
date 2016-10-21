@@ -44,6 +44,11 @@ $ lein test-refresh
 in another terminal. The tests are run everytime you change .clj source files.
 You will be notified via Growl notification any time a test fails.
 
+When writing tests at the repl, better to not have this running as it interferes
+with setting up the database.
+
+test-refresh will also interfere with any git hooks that run lein tests
+
 ## License
 
 Copyright © 2016 Purple Services, Inc.
