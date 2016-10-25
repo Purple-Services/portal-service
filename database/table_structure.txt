@@ -1,0 +1,73 @@
+Current Structure
+
+Users are assigned to one account_managers account.
+			      
+ 			      +--------------------+
+ +------------------+	      | users              |
+ | account_managers |	      |--------------------|
+ |------------------|	      | id                 |
+ | id               |<--------| account_manager_id |
+ +------------------+	      +--------------------+
+
+Proposed Intermediate Structure
+
+Users are still assigned to one account_managers account.
+A user is now assigned to a account_manager_id. Users with
+account_manager_id are able to manage users who have a
+matching account_manager_id. Any vehicles or orders of these
+users will manageable by the account_manager.
+
+ +------------------+	      +--------------------+
+ | account_managers |	      | users              |
+ |------------------|	      |--------------------|
+ | user_id          |-------->| id                 |
+ | id               |<--------| account_manager_id |
+ +------------------+	      +--------------------+
+
+Proposed Structure for multiple account managers managing multiple
+users.
+
+A users_account_managers table will be used to correlate users with
+acount_managers. Users can have multiple account managers.
+
+use cases: A mother and father manage the accounts of their children.
+           Because they still have user accounts, they will be able to order
+	   gas for themselves as well.
+	   
+           A business has a COO with all users in their business being viewable.
+	   There are also site managers, who can manage some of the users.
+	   
+	  +------------------+	       +------------------------+	  +-------+
+	  | account_managers |	       | users_account_managers |	  | users |
+	  |------------------|	       |------------------------|	  |-------|
+    +-----| user_id          |	       | user_id                |-------->| id    |<----+
+    |	  | id               |<--------| account_manager_id     |	  +-------+ 	|
+    | 	  +------------------+	       +------------------------+			|
+    | 	  									    	|
+    +-----------------------------------------------------------------------------------+
+	  
+Proposed Structure for Fleets
+
+A fleet delivery will be associated with a user account and a location id.
+A fleet location will be associated with a user. A fleet location can have
+multiple users associated with it so that multiple users can order to the same
+location.
+
+Fleets can also have account_managers associated with the users who will be
+ordering for the fleets.
+
+	  +-------+	    +------------------+	 
+	  | users |	    | fleet_deliveries |	 +-----------------+
+  	  |-------|	    |------------------|	 | fleet_locations |
+    +---->+ id    |<--------| user_id          |	 |-----------------|
+    |	  +-------+	    | location_id      |-------->| id              |<-------+
+    |			    +------------------+	 +-----------------+ 	    |
+    | 			    						      	    |
+    | 			    						      	    |
+    | 			    						       	    | 
+    | 			    +-----------------------+			       	    | 
+    | 			    | users_fleet_locations |			            | 
+    | 			    |-----------------------|			    	    |
+    +-----------------------| user_id               |			            | 
+			    | fleet_locations_id    |-------------------------------+
+			    +-----------------------+
