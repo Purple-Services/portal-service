@@ -32,10 +32,16 @@
   and user-id of the cookies"
   [request]
   (let [cookies (keywordize-keys (:cookies request))
-        user-id (get-in cookies [:user-id :value])
-        token   (get-in cookies [:token :value])]
-    (if (valid-session? (conn) user-id token)
-      false)))
+        cookie-user-id (get-in cookies [:user-id :value])
+        uri (:uri request)
+        request-user-id (second (re-matches #"/user/([a-zA-Z0-9]{20})/.*" uri))]
+    (boolean (= cookie-user-id request-user-id))))
+
+(defn on-error
+  [request value]
+  {:status 403
+   :header {}
+   :body (str "you do not have permission to access " (:uri request))})
 
 (def login-rules
   ;; all of these routes must always be allowed access
@@ -59,12 +65,14 @@
     :handler (constantly true)}
    {:pattern #"/forgot-password"
     :handler (constantly true)}
-   {:pattern #"/user/*."
-    :handler user-id-matches-cookies?}
+   {:pattern #"/user/.*/.*"
+    :handler #(every? true?
+                      ((juxt user-id-matches-cookies?
+                             valid-session-wrapper?) %))
+    :on-error on-error}
    {:pattern #".*(/.*|$)"
     :handler valid-session-wrapper?
-    :redirect "/login"}
-   ])
+    :redirect "/login"}])
 
 (defroutes portal-routes
   ;;!! main page
@@ -114,7 +122,7 @@
         (response
          (let [b (keywordize-keys body)]
            (login/change-password (conn) (:reset-key b) (:password b)))))
-  (context "/user/:id" [user-id]
+  (context "/user/:user-id" [user-id]
            (GET "/vehicles" []
                 (response
                  (users/vehicles-of-user-id user-id))))
