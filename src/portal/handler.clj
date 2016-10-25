@@ -4,11 +4,12 @@
             [clojure.walk :refer [keywordize-keys stringify-keys]]
             [common.config :as config]
             [common.db :refer [!select conn]]
-            [common.users :as users]
+            [common.users :refer [valid-session?]]
             [compojure.core :refer :all]
             [compojure.route :as route]
             [portal.login :as login]
             [portal.pages :as pages]
+            [portal.users :as users]
             [ring.middleware.cookies :refer [wrap-cookies]]
             [ring.middleware.cors :refer [wrap-cors]]
             [ring.middleware.json :refer [wrap-json-body wrap-json-response]]
@@ -24,10 +25,20 @@
   (let [cookies (keywordize-keys (:cookies request))
         user-id (get-in cookies [:user-id :value])
         token   (get-in cookies [:token :value])]
-    (users/valid-session? (conn) user-id token)))
+    (valid-session? (conn) user-id token)))
+
+(defn user-id-matches-cookies?
+  "Given a route or /user/<id>, check that the <id> matches the token
+  and user-id of the cookies"
+  [request]
+  (let [cookies (keywordize-keys (:cookies request))
+        user-id (get-in cookies [:user-id :value])
+        token   (get-in cookies [:token :value])]
+    (if (valid-session? (conn) user-id token)
+      false)))
 
 (def login-rules
-  ;; all of these routes must always be allowed access for proper
+  ;; all of these routes must always be allowed access
   [{:pattern #"/ok"
     :handler (constantly true)}
    {:pattern #".*/css/.*"
@@ -48,9 +59,12 @@
     :handler (constantly true)}
    {:pattern #"/forgot-password"
     :handler (constantly true)}
+   {:pattern #"/user/*."
+    :handler user-id-matches-cookies?}
    {:pattern #".*(/.*|$)"
     :handler valid-session-wrapper?
-    :redirect "/login"}])
+    :redirect "/login"}
+   ])
 
 (defroutes portal-routes
   ;;!! main page
@@ -100,6 +114,10 @@
         (response
          (let [b (keywordize-keys body)]
            (login/change-password (conn) (:reset-key b) (:password b)))))
+  (context "/user/:id" [user-id]
+           (GET "/vehicles" []
+                (response
+                 (users/vehicles-of-user-id user-id))))
   ;; for aws webservices
   (GET "/ok" [] (response {:success true}))
   ;; resources
