@@ -1,4 +1,4 @@
-(ns portal.functional.test.users
+(ns portal.functional.test.vehicles
   (:require [cheshire.core :refer [generate-string parse-string]]
             [clojure.test :refer [deftest is testing use-fixtures]]
             [common.db :as db]

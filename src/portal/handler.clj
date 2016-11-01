@@ -9,7 +9,7 @@
             [compojure.route :as route]
             [portal.login :as login]
             [portal.pages :as pages]
-            [portal.users :as users]
+            [portal.vehicles :as vehicles]
             [ring.middleware.cookies :refer [wrap-cookies]]
             [ring.middleware.cors :refer [wrap-cors]]
             [ring.middleware.json :refer [wrap-json-body wrap-json-response]]
@@ -125,7 +125,7 @@
   (context "/user/:user-id" [user-id]
            (GET "/vehicles" []
                 (response
-                 (users/vehicles-of-user-id user-id))))
+                 (vehicles/vehicles user-id))))
   ;; for aws webservices
   (GET "/ok" [] (response {:success true}))
   ;; resources
