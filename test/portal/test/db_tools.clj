@@ -55,6 +55,9 @@
   ;; populate the tables
   (create-tables-and-populate-database ebdb-test-config))
 
+(defn reset-db! []
+  (clear-and-populate-test-database))
+
 (defn clear-and-populate-test-database-fixture
   [t]
   (clear-and-populate-test-database)

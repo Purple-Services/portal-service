@@ -8,6 +8,7 @@
             [compojure.core :refer :all]
             [compojure.route :as route]
             [portal.login :as login]
+            [portal.orders :as orders]
             [portal.pages :as pages]
             [portal.vehicles :as vehicles]
             [ring.middleware.cookies :refer [wrap-cookies]]
@@ -125,7 +126,10 @@
   (context "/user/:user-id" [user-id]
            (GET "/vehicles" []
                 (response
-                 (vehicles/vehicles user-id))))
+                 (vehicles/user-vehicles user-id)))
+           (GET "/orders" []
+                (response
+                 (orders/user-orders user-id))))
   ;; for aws webservices
   (GET "/ok" [] (response {:success true}))
   ;; resources

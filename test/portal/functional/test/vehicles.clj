@@ -3,12 +3,14 @@
             [clojure.test :refer [deftest is testing use-fixtures]]
             [common.db :as db]
             [common.util :as util]
+            [portal.functional.test.cookies :as cookies]
             [portal.handler :refer [handler]]
             [portal.test.db-tools :refer
              [setup-ebdb-test-pool!
               setup-ebdb-test-for-conn-fixture
               clear-and-populate-test-database
-              clear-and-populate-test-database-fixture]]
+              clear-and-populate-test-database-fixture
+              reset-db!]]
             [portal.login :as login]
             [portal.test.login-test :refer [register-user!]]
             [ring.mock.request :as mock]))
@@ -21,22 +23,6 @@
 
 (use-fixtures :once setup-ebdb-test-for-conn-fixture)
 (use-fixtures :each clear-and-populate-test-database-fixture)
-
-(defn reset-db! []
-  (clear-and-populate-test-database))
-
-(defn get-cookie-token
-  "Given a response map, return the token"
-  [response]
-  (second (re-find #"token=([a-zA-Z0-9]*);"
-                   (first (filter (partial re-matches #"token.*")
-                                  (get-in response [:headers "Set-Cookie"]))))))
-
-(defn get-cookie-user-id
-  [response]
-  (second (re-find #"user-id=([a-zA-Z0-9]*);"
-                   (first (filter (partial re-matches #"user-id.*")
-                                  (get-in response [:headers "Set-Cookie"]))))))
 
 (defn vehicle-map
   "Given vehicle information, create a vehicle map for it"
@@ -85,8 +71,8 @@
                              (generate-string {:email email
                                                :password password}))
                             (mock/content-type "application/json")))
-        token (get-cookie-token login-response)
-        user-id (get-cookie-user-id login-response)
+        token (cookies/get-cookie-token login-response)
+        user-id (cookies/get-cookie-user-id login-response)
         auth-cookie {"cookie" (str "token=" token ";"
                                    " user-id=" user-id)}
         ;; second user
@@ -94,9 +80,9 @@
         second-password "bazqux"
         second-full-name "Baz Qux"
         _ (register-user! {:db-conn conn
-                           :platform-id email
-                           :password password
-                           :full-name full-name})
+                           :platform-id second-email
+                           :password second-password
+                           :full-name second-full-name})
         second-user (login/get-user-by-email conn second-email)
         second-user-id (:id second-user)]
     (testing "A user can get their own vehicles"
