@@ -3,7 +3,7 @@
             [portal.vehicles :as vehicles]))
 
 (def orders-cols
-  [:status :target_time_start :target_time_end :vehicle_id :license_plate
+  [:id :status :target_time_start :target_time_end :vehicle_id :license_plate
    :address_street :tire_pressure_check :gas_price :gallons :service_fee
    :total_price])
 
@@ -21,5 +21,6 @@
              (assoc order
                     :vehicle_description
                     (vehicles/vehicle-description order-vehicle)
-                    :vehicle_id (:id order-vehicle))))
+                    :vehicle_id (:id order-vehicle)
+                    :license_plate (:license_plate order-vehicle))))
          orders)))
