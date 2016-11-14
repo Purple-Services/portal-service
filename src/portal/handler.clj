@@ -10,6 +10,7 @@
             [portal.login :as login]
             [portal.orders :as orders]
             [portal.pages :as pages]
+            [portal.users :as users]
             [portal.vehicles :as vehicles]
             [ring.middleware.cookies :refer [wrap-cookies]]
             [ring.middleware.cors :refer [wrap-cors]]
@@ -129,7 +130,10 @@
                  (vehicles/user-vehicles user-id)))
            (GET "/orders" []
                 (response
-                 (orders/user-orders user-id))))
+                 (orders/user-orders user-id)))
+           (GET "/email" []
+                (response
+                 (users/get-user-email (conn) user-id))))
   ;; for aws webservices
   (GET "/ok" [] (response {:success true}))
   ;; resources
