@@ -3,6 +3,7 @@
             [clojure.test :refer [deftest is testing use-fixtures]]
             [common.db :as db]
             [portal.functional.test.cookies :as cookies]
+            [portal.handler :as handler]
             [portal.login :as login]
             [portal.test.db-tools :as db-tools]
             [portal.test.login-test :as login-test]
@@ -15,6 +16,7 @@
 ;; (db-tools/reset-db!) ; note: most tests will need this run between
 ;; -- run more tests
 
+(def handler handler/handler)
 (use-fixtures :once db-tools/setup-ebdb-test-for-conn-fixture)
 (use-fixtures :each db-tools/clear-and-populate-test-database-fixture)
 
@@ -27,7 +29,7 @@
                                       :platform-id email
                                       :password password
                                       :full-name full-name})
-        login-response (portal.handler/handler
+        login-response (handler
                         (-> (mock/request
                              :post "/login"
                              (cheshire/generate-string {:email email
@@ -49,13 +51,15 @@
         second-user-id (:id second-user)]
     (testing "A user can their own email address"
       (is (= "foo@bar.com"
-             (:body (portal.handler/handler
-                     (-> (mock/request
-                          :get (str "/user/" user-id "/email"))
-                         (assoc :headers auth-cookie)))))))
+             (:email (cheshire/parse-string
+                      (:body (handler
+                              (-> (mock/request
+                                   :get (str "/user/" user-id "/email"))
+                                  (assoc :headers auth-cookie))))
+                      true)))))
     (testing "A user can not access other people's email address"
       (is (= 403
-             (:status (portal.handler/handler
-                     (-> (mock/request
-                          :get (str "/user/" second-user-id "/email"))
-                         (assoc :headers auth-cookie)))))))))
+             (:status (handler
+                       (-> (mock/request
+                            :get (str "/user/" second-user-id "/email"))
+                           (assoc :headers auth-cookie)))))))))

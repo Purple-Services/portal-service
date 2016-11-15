@@ -133,7 +133,7 @@
                  (orders/user-orders user-id)))
            (GET "/email" []
                 (response
-                 (users/get-user-email (conn) user-id))))
+                 {:email (users/get-user-email (conn) user-id)})))
   ;; for aws webservices
   (GET "/ok" [] (response {:success true}))
   ;; resources
