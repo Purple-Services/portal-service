@@ -156,3 +156,11 @@ tbody > tr.active > td {
 .orange-color {
     color: #F98559;
 }
+
+.white-color {
+    color: #fff;
+}
+
+.grey-color {
+    color: #ddd;
+}
