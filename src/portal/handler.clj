@@ -95,15 +95,19 @@
                                         (or (get headers "x-forwarded-for")
                                             remote-addr))]
           (if (:success login-result)
-            (-> (response {:success true})
-                (merge {:cookies
-                        {"token" {:value (:token login-result)
-                                  :http-only true
-                                  :path config/base-url
-                                  :max-age 7776000}
-                         "user-id" {:value (get-in login-result [:user :id])
-                                    :max-age 7776000}
-                         }}))
+            (let [user-id (get-in login-result [:user :id])]
+              (-> (response {:success true})
+                  (merge
+                   {:cookies
+                    {"token" {:value (:token login-result)
+                              :http-only true
+                              :path config/base-url
+                              :max-age 7776000}
+                     "user-id" {:value user-id
+                                :max-age 7776000}
+                     "account-manager" {:value
+                                        (users/is-account-manager? user-id)
+                                        :max-age 7776000}}})))
             (response login-result))))
   (GET "/logout" []
        (-> (redirect "/login")

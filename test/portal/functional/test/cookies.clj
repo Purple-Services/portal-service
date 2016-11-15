@@ -12,3 +12,13 @@
   (second (re-find #"user-id=([a-zA-Z0-9]*);"
                    (first (filter (partial re-matches #"user-id.*")
                                   (get-in response [:headers "Set-Cookie"]))))))
+
+
+(defn get-cookie-account-manager?
+  "Given a response map, return whether or not the user is an account-manager"
+  [response]
+  (read-string
+   (second
+    (re-find #"account-manager=([a-zA-Z0-9]*);"
+             (first (filter (partial re-matches #"account-manager.*")
+                            (get-in response [:headers "Set-Cookie"])))))))
