@@ -10,6 +10,7 @@
                                           clear-and-populate-test-database
                                           clear-and-populate-test-database-fixture]]
             [portal.login :as login]
+            [portal.users :as users]
             [portal.test.login-test :refer [register-user!]]
             [portal.handler]
             [ring.adapter.jetty :refer [run-jetty]]))
@@ -48,6 +49,8 @@
   {:xpath "//ul/li[contains(@class,'hidden-lg')]//a[text()='LOG OUT']"})
 (def logout-sm-xpath
   {:xpath "//ul[contains(@class,'hidden-xs')]/li//a[text()='LOG OUT']"})
+
+(def logout {:xpath "//a[text()='LOG OUT']"})
 
 (def login-button {:xpath "//button[text()='LOGIN']"})
 
@@ -271,3 +274,20 @@
               (click (find-element login-button))
               (wait-until #(exists? {:xpath "//a[text()='LOG OUT']"}))
               (is (exists? {:xpath "//a[text()='LOG OUT']"})))))))))
+
+(deftest account-manager-tests
+  (let [conn (db/conn)
+        email "manager@bar.com"
+        password "manager"
+        full-name "Manager"
+        ;; register a user
+        _ (register-user! {:db-conn conn
+                           :platform-id email
+                           :password password
+                           :full-name full-name})
+        manager (users/get-user-by-email conn email)]
+    (testing "Account manager logs in, but they are not yet an account manager"
+      (go-to-uri "login")
+      (login-portal email password)
+      (wait-until #(exists? logout))
+      (is (exists? (find-element logout))))))

@@ -72,6 +72,11 @@
                       ((juxt user-id-matches-cookies?
                              valid-session-wrapper?) %))
     :on-error on-error}
+   {:pattern #"/account-manager/.*/.*"
+    :handler #(every? true?
+                      ((juxt user-id-matches-cookies?
+                             valid-session-wrapper?) %))
+    :on-error on-error}
    {:pattern #".*(/.*|$)"
     :handler valid-session-wrapper?
     :redirect "/login"}])
