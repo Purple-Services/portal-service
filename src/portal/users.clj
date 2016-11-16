@@ -19,21 +19,6 @@
   [id]
   (boolean (db/!select (db/conn) "account_managers" [:id] {:user_id id})))
 
-(defn register-user!
-  "Create a user account of type native.
-  optional keys
-  :reset_key ; default is \"\"
-  :phone_number ; default is \"\"
-  :phone_number_verified ; default is 0 (false)"
-  [{:keys [db-conn platform-id password full-name
-           reset_key phone_number phone_number_verified]
-    :or {reset_key "" phone_number "" phone_number_verified 0}}]
-  (db/!insert db-conn "users"
-              {:id (util/rand-str-alpha-num 20)
-               :email platform-id
-               :type "native"
-               :password_hash (bcrypt/encrypt password)
-               :reset_key reset_key
-               :phone_number phone_number
-               :phone_number_verified phone_number_verified
-               :name full-name}))
+(defn platform-id-available?
+  [platform-id]
+  (not (boolean (get-user-by-email (db/conn) platform-id))))

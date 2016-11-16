@@ -12,7 +12,7 @@
             [ring.mock.request :as mock]))
 
 ;; for manual testing:
-;; (db/tools/reset-db!) ; initial setup
+;; (db-tools/reset-db!) ; initial setup
 ;;
 ;; -- run tests --
 ;; (db-tools/reset-db!) ; note: most tests will need this run between
@@ -71,7 +71,7 @@
         password "manager"
         full-name "Manager"
         ;; register a user
-        _ (users/register-user! {:db-conn conn
+        _ (login-test/register-user! {:db-conn conn
                                  :platform-id email
                                  :password password
                                  :full-name full-name})
