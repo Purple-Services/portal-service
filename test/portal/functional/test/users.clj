@@ -1,6 +1,6 @@
 (ns portal.functional.test.users
   (:require [cheshire.core :as cheshire]
-            [clojure.test :refer [deftest is testing use-fixtures]]
+            [clojure.test :refer [deftest is testing use-fixtures run-tests]]
             [common.db :as db]
             [portal.accounts :as accounts]
             [portal.functional.test.cookies :as cookies]
@@ -50,7 +50,9 @@
                                       :full-name second-full-name})
         second-user (login/get-user-by-email conn second-email)
         second-user-id (:id second-user)]
-    (testing "A user can their own email address"
+    (testing "A user can retrieve their own email address"
+      (println "user-id: " user-id)
+      (println "second-user-id:" second-user-id)
       (is (= "foo@bar.com"
              (:email (cheshire/parse-string
                       (:body (handler/handler
@@ -72,9 +74,9 @@
         full-name "Manager"
         ;; register a user
         _ (login-test/register-user! {:db-conn conn
-                                 :platform-id email
-                                 :password password
-                                 :full-name full-name})
+                                      :platform-id email
+                                      :password password
+                                      :full-name full-name})
         manager (users/get-user-by-email conn email)]
     (testing "Account manager logs in, but they are not yet an account manager"
       (let [login-response (handler/handler

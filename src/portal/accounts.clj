@@ -102,4 +102,5 @@
            :substitutions
            {:%RESETLINK%
             (str "Please click the link below to set your password:"
-                 "<br />" config/base-url "reset-password/" reset-key)}))))
+                 "<br />" config/base-url "reset-password/" reset-key)})
+          {:success true})))
