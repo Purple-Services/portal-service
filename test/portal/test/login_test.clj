@@ -8,11 +8,11 @@
             [common.db :as db]
             [common.util :as util]
             [portal.login :as login]
-            [portal.test.db-tools :refer [setup-ebdb-test-pool!
+            [portal.test.db-tools :refer [clear-and-populate-test-database-fixture
                                           setup-ebdb-test-for-conn-fixture]]))
 
+(use-fixtures :once clear-and-populate-test-database-fixture)
 (use-fixtures :each setup-ebdb-test-for-conn-fixture)
-
 
 (defn register-user!
   "Create a user"

@@ -67,3 +67,50 @@
                              :full-name child-full-name}
                             accounts/child-account-validations)
                 [:email])))))))
+
+(deftest create-child-account-tests
+  (let [conn (db/conn)
+        email "manager@bar.com"
+        password "manager"
+        full-name "Manager"
+        ;; register a user
+        _ (login-test/register-user! {:db-conn conn
+                                      :platform-id email
+                                      :password password
+                                      :full-name full-name})
+        manager (users/get-user-by-email conn email)
+        ;; register an account
+        _ (accounts/create-account! "FooBar.com")
+        ;; retrieve the account
+        account (accounts/get-account-by-name "FooBar.com")
+        ;; register another account
+        _ (accounts/create-account! "BazQux.com")
+        ;; retrieve the account
+        another-account (accounts/get-account-by-name "BaxQux.com")
+        ;; associate manager with account
+        _ (accounts/associate-account-manager! (:id manager) (:id account))
+        child-email "james@purpleapp.com"
+        child-password "child"
+        child-full-name "Foo Bar"
+        ]
+    (with-redefs [common.sendgrid/send-template-email
+                  (fn [to subject message
+                       & {:keys [from template-id substitutions]}]
+                    (println "No reset password email was actually sent"))]
+      (testing "An account manager can add a user to an account they manage"
+        (is (:success
+             (accounts/create-child-account!
+              {:db-conn conn
+               :new-user {:email child-email
+                          :full-name child-full-name}
+               :manager-id (:id manager)
+               :account-id (:id account)}))))
+      (testing "..but they can NOT add a user to an account they don't manage"
+        (is (= "User does not manage that account"
+               (:message
+                (accounts/create-child-account!
+                 {:db-conn conn
+                  :new-user {:email child-email
+                             :full-name child-full-name}
+                  :manager-id (:id manager)
+                  :account-id (:id another-account)}))))))))
