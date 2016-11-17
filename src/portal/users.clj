@@ -7,7 +7,7 @@
 (defn get-user-email
   "Given a user-id retrun the users email."
   [db-conn id]
-  (:email (first (db/!select db-conn "users" [:email] {}))))
+  (:email (first (db/!select db-conn "users" [:email] {:id id}))))
 
 (defn get-user-by-email
   "Given an email address, return the user-id associated with that account"
