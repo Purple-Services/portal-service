@@ -51,8 +51,6 @@
         second-user (login/get-user-by-email conn second-email)
         second-user-id (:id second-user)]
     (testing "A user can retrieve their own email address"
-      (println "user-id: " user-id)
-      (println "second-user-id:" second-user-id)
       (is (= "foo@bar.com"
              (:email (cheshire/parse-string
                       (:body (handler/handler
