@@ -6,7 +6,14 @@
             [common.db :as db]
             [common.util :as util]
             [common.sendgrid :as sendgrid]
+            [portal.db :refer [raw-sql-query]]
             [portal.users :as users]))
+
+(defn manager-account
+  "Given a user-id, return the account-id asociated with the account"
+  [user-id]
+  (:account_id (first (db/!select (db/conn) "account_managers" [:account_id]
+                                  {:user_id user-id}))))
 
 (defn account-name-exists?
   "Is there already an account with this name?"
@@ -14,7 +21,7 @@
   (boolean (db/!select (db/conn) "accounts" [:id] {:name account-name})))
 
 (defn manages-account?
-  "Given an user-id and account-id, determine if they really do manager that
+  "Given an user-id and account-id, determine if they really do manage that
   account"
   [user-id account-id]
   (->>
@@ -28,6 +35,74 @@
                        account-id)
                     (= (:user_id account-manager)
                        user-id)))))))
+(defn process-user
+  "Process a user to be included as a JSON response"
+  [user]
+  (assoc user
+         :timestamp_created
+         (/ (.getTime
+             (:timestamp_created user))
+            1000)
+         :pending
+         (if (= (:pending user) 1)
+           true
+           false)))
+
+(def users-select
+  (str "users.name, users.email, users.phone_number, users.timestamp_created, "
+       "users.id, IF(users.password_hash = '',true,false) AS pending"))
+
+(defn user-account-sql
+  "Given a user-id, return the sql for retrieving that user"
+  [user-id]
+  (str "SELECT " users-select " FROM `users` "
+       "WHERE users.id = '" user-id "';" ))
+
+(defn get-user
+  "Given a user-id and account-id, return the user.
+  account-id is required to determine if the user is a manager,
+  if not account-id is given, assumes the user is not a manager."
+  [user-id & [account-id]]
+  (let [user (first (raw-sql-query
+                     (db/conn)
+                     [(user-account-sql user-id)]))
+        manager? (if-not (nil? account-id)
+                   (manages-account? user-id account-id)
+                   false)]
+    (if-not (empty? user)
+      (-> user
+          (assoc :is-manager manager?)
+          (process-user))
+      {:success false
+       :message "There is no user with that id"})))
+
+(defn account-children-sql
+  [account-id]
+  (str "SELECT " users-select " FROM `users` "
+       "JOIN account_children ON "
+       "account_children.user_id = users.id "
+       "WHERE account_children.account_id = '" account-id "';"))
+
+(defn account-managers-sql
+  [account-id]
+  (str "SELECT " users-select " FROM `users` "
+       "JOIN account_managers ON "
+       "account_managers.user_id = users.id "
+       "WHERE account_managers.account_id = '" account-id "';"))
+
+(defn account-users
+  "Given an account-id, return all users associated with this account"
+  [account-id]
+  (let [account-children (->> (raw-sql-query
+                               (db/conn)
+                               [(account-children-sql account-id)])
+                              (map #(assoc % :is-manager false)))
+        account-managers (->> (raw-sql-query
+                               (db/conn)
+                               [(account-managers-sql account-id)])
+                              (map #(assoc % :is-manager true)))]
+    (->> (concat account-children account-managers)
+         (map #(process-user %)))))
 
 (defn get-account-by-name
   "Given an account name, return the id associated with that account"
@@ -103,4 +178,5 @@
            {:%RESETLINK%
             (str "Please click the link below to set your password:"
                  "<br />" config/base-url "reset-password/" reset-key)})
-          {:success true})))
+          {:success true
+           :id new-user-id})))

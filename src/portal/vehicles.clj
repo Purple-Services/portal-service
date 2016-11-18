@@ -14,6 +14,6 @@
 (defn user-vehicles
   "Return all vehicles which match user-id"
   [user-id]
-  (db/!select (db/conn) "vehicles"
-              vehicle-cols
-              {:user_id user-id}))
+  (into [] (db/!select (db/conn) "vehicles"
+                       vehicle-cols
+                       {:user_id user-id})))
