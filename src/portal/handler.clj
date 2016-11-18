@@ -145,6 +145,15 @@
          (let [b (keywordize-keys body)]
            (login/change-password (conn) (:reset-key b) (:password b)))))
   (context "/user/:user-id" [user-id]
+           ;; this route is insecure! need to check if user really
+           ;; can view this vehicle!
+           (GET "/vehicle/:vehicle-id" [vehicle-id]
+                (response
+                 (vehicles/get-vehicle vehicle-id)))
+           (POST "/add-vehicle" {body :body}
+                 (response
+                  (let [new-vehicle (keywordize-keys body)]
+                    (vehicles/create-vehicle! new-vehicle))))
            (GET "/vehicles" []
                 (response
                  (vehicles/user-vehicles user-id)))
@@ -169,7 +178,11 @@
                      {:db-conn (conn)
                       :new-user new-user
                       :manager-id user-id
-                      :account-id (accounts/manager-account user-id)})))))
+                      :account-id (accounts/manager-account user-id)}))))
+           (GET "/vehicles" []
+                (response
+                 (vehicles/account-vehicles
+                  (accounts/manager-account user-id)))))
   ;; for aws webservices
   (GET "/ok" [] (response {:success true}))
   ;; resources
