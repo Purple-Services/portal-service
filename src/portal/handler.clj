@@ -7,6 +7,7 @@
             [common.users :refer [valid-session?]]
             [compojure.core :refer :all]
             [compojure.route :as route]
+            [portal.accounts :as accounts]
             [portal.login :as login]
             [portal.orders :as orders]
             [portal.pages :as pages]
@@ -37,6 +38,16 @@
         cookie-user-id (get-in cookies [:user-id :value])
         uri (:uri request)
         request-user-id (second (re-matches #"/user/([a-zA-Z0-9]{20})/.*" uri))]
+    (boolean (= cookie-user-id request-user-id))))
+
+(defn manager-id-matches-cookies?
+  "Given a route of /account-manager/<id>, check that the <id> matches the token
+  and user-id of the cookies"
+  [request]
+  (let [cookies (keywordize-keys (:cookies request))
+        cookie-user-id (get-in cookies [:user-id :value])
+        uri (:uri request)
+        request-user-id (second (re-matches #"/account-manager/([a-zA-Z0-9]{20})/.*" uri))]
     (boolean (= cookie-user-id request-user-id))))
 
 (defn on-error
@@ -74,7 +85,7 @@
     :on-error on-error}
    {:pattern #"/account-manager/.*/.*"
     :handler #(every? true?
-                      ((juxt user-id-matches-cookies?
+                      ((juxt manager-id-matches-cookies?
                              valid-session-wrapper?) %))
     :on-error on-error}
    {:pattern #".*(/.*|$)"
@@ -143,6 +154,22 @@
            (GET "/email" []
                 (response
                  {:email (users/get-user-email (conn) user-id)})))
+  (context "/account-manager/:user-id" [user-id]
+           (GET "/user/:id" [id]
+                (response
+                 (accounts/get-user id
+                                    (accounts/manager-account user-id))))
+           (GET "/users" []
+                (response
+                 (accounts/account-users (accounts/manager-account user-id))))
+           (POST "/add-user" {body :body}
+                 (response
+                  (let [new-user (keywordize-keys body)]
+                    (accounts/create-child-account!
+                     {:db-conn (conn)
+                      :new-user new-user
+                      :manager-id user-id
+                      :account-id (accounts/manager-account user-id)})))))
   ;; for aws webservices
   (GET "/ok" [] (response {:success true}))
   ;; resources
