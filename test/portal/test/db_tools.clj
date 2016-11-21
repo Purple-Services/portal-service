@@ -4,39 +4,51 @@
             [clojure.java.jdbc :refer [with-connection do-commands]]
             [clojure.test :refer [use-fixtures deftest is test-ns testing]]))
 
-(def ebdb-test-config
-  "Configuration map for connecting to the local test database."
-  (let [db-host (env :test-db-host)
-        db-port (env :test-db-port)
-        db-name (env :test-db-name)
-        db-password (env :test-db-password)
-        db-user (env :test-db-user)
-        db-sql "database/ebdb.sql"]
-    {:classname "com.mysql.jdbc.Driver"
-     :subprotocol "mysql"
-     :subname (str "//" db-host ":" db-port "/" db-name
-                   "?useLegacyDatetimeCode=false"
-                   "&serverTimezone=UTC")
-     :user db-user
-     :password db-password
-     :sql db-sql}))
+(defn ebdb-config
+  "Given a map of the form
+  {:db-host <str> ; hostname of db
+   :db-port <int>
+   :db-name <str>
+   :db-user <str>
+   :db-password <str>
+  }
+  return a configuration"
+  [{:keys [db-host db-port db-name db-user db-password]}]
+  {:classname "com.mysql.jdbc.Driver"
+   :subprotocol "mysql"
+   :subname (str "//" db-host ":" db-port "/" db-name
+                 "?useLegacyDatetimeCode=false"
+                 "&serverTimezone=UTC")
+   :user db-user
+   :password db-password
+   :sql "database/ebdb.sql"})
 
-(def ebdb-dev-config
-  "Configuration map for connecting to the local test database."
-  (let [db-host (env :test-db-host)
-        db-port (env :test-db-port)
-        db-name (env :test-db-name)
-        db-password (env :test-db-password)
-        db-user (env :test-db-user)
-        db-sql "database/ebdb.sql"]
-    {:classname "com.mysql.jdbc.Driver"
-     :subprotocol "mysql"
-     :subname (str "//" db-host ":" db-port "/" "ebdb_dev"
-                   "?useLegacyDatetimeCode=false"
-                   "&serverTimezone=UTC")
-     :user db-user
-     :password db-password
-     :sql db-sql}))
+(def ebdb-test-config
+  "Configuration map for connecting to the local dev database."
+  (ebdb-config {:db-host     (env :test-db-host)
+                :db-port     (env :test-db-port)
+                :db-name     (env :test-db-name)
+                :db-user     (env :test-db-user)
+                :db-password (env :test-db-password)}))
+
+;; if you want to use different pools, do a
+;; (set-new-db-pool! <config-file>)
+
+(def local-ebdb-dev-config
+  "Configuration map for connecting to the local dev database."
+  (ebdb-config {:db-host     (env :test-db-host)
+                :db-port     (env :test-db-port)
+                :db-name     (env :local-dev-db-name)
+                :db-user     (env :test-db-user)
+                :db-password (env :test-db-password)}))
+
+(def remote-ebdb-dev-config
+  "Configuration map for connecting to the remote dev database"
+  (ebdb-config {:db-host     (env :remote-dev-db-host)
+                :db-port     (env :test-db-port)
+                :db-name     (env :remote-dev-db-name)
+                :db-user     (env :test-db-user)
+                :db-password (env :remote-dev-db-password)}))
 
 (defn process-sql
   "Process a SQL file into statements that can be applied with do-commands"
@@ -45,7 +57,7 @@
                    (slurp filename) ; read in the sql file
                    (clojure.string/replace #"--.*\n" "") ; ignore sql comments
                    (clojure.string/split #";\n") ; sepereate chunks into
-                                        ; statements
+                                                 ; statements
                    )]
     (->> sql-lines
          (map #(clojure.string/replace % #"\n" ""))
@@ -85,9 +97,15 @@
   (db/set-pooled-db! ebdb-test-config)
   (clear-and-populate-test-database))
 
-(defn set-ebdb-dev-pool!
-  []
-  (db/set-pooled-db! ebdb-dev-config))
+(defn set-ebdb-pool-host!
+  "Given db-uri in the form"
+  [db-uri db-user db-password]
+  (assoc ebdb-test-config
+         :subname (str "//" db-uri
+                       "?useLegacyDatetimeCode=false"
+                       "&serverTimezone=UTC")
+         :user db-user
+         :password db-password))
 
 ;; THIS FIXTURE REQUIRES A LOCAL MySQL DATABASE THAT HAS GIVEN PROPER
 ;; PERMISSIONS TO purplemaster FOR ebdb_test, OTHERWISE TESTS WILL FAIL!
@@ -107,3 +125,10 @@
   (clear-test-database)
   ;; close out the db connection
   (.close (:datasource (db/conn))))
+
+(defn set-new-db-pool!
+  [config]
+  ;; close out the current db connect
+  (.close (:datasource (db/conn)))
+  ;; open the new one
+  (db/set-pooled-db! config))
