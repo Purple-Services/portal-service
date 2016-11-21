@@ -41,12 +41,12 @@
 (defn account-vehicles-sql
   [account-id]
   (str "SELECT " vehicles-select " FROM `vehicles` "
-       "JOIN account_children ON "
+       "LEFT JOIN account_children ON "
        "account_children.user_id = vehicles.user_id "
-       "JOIN account_managers ON "
+       "LEFT JOIN account_managers ON "
        "account_managers.user_id = vehicles.user_id "
        "WHERE account_managers.account_id = '" account-id "' "
-       "AND account_children.account_id = '" account-id "';"))
+       "OR account_children.account_id = '" account-id "';"))
 
 (defn process-vehicle
   "Process a vehicle to included as a JSON response"
