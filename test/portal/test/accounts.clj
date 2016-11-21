@@ -7,7 +7,8 @@
             [portal.login :as login]
             [portal.users :as users]
             [portal.test.db-tools :as db-tools]
-            [portal.test.login-test :as login-test]))
+            [portal.test.login-test :as login-test]
+            [portal.test.utils :refer [get-bouncer-error]]))
 
 ;; for manual testing:
 ;; (setup-ebdb-test-pool!) ; initialize
@@ -52,11 +53,6 @@
           new-account-result))
       ;; manager was not registered
       register-result)))
-
-(defn get-bouncer-error
-  [validation-map ks]
-  (get-in (second validation-map)
-          (vec (concat [:bouncer.core/errors] ks))))
 
 (deftest child-account-validations
   (let [conn (db/conn)
