@@ -18,7 +18,7 @@
 
 (use-fixtures :each db-tools/setup-ebdb-test-for-conn-fixture)
 
-(defn manual-create-child-account!
+(defn manually-create-child-account!
   [account-map]
   (with-redefs [common.sendgrid/send-template-email
                 (fn [to subject message
@@ -31,6 +31,27 @@
                                           {:email (:email new-user)}))]
           (str "http://localhost:3002/reset-password/" (:reset_key new-user)))
         create-results))))
+
+(defn manually-create-manager-account!
+  [{:keys [db-conn email password full-name account-name]}]
+  (let [register-result (login-test/register-user! {:db-conn db-conn
+                                                    :platform-id email
+                                                    :password password
+                                                    :full-name full-name})]
+    (if register-result
+      ;; manager was registered
+      (let [new-manager (users/get-user-by-email (db/conn) email)
+            new-account-result (accounts/create-account! account-name)]
+        (if (:success new-account-result)
+          ;; new account was created
+          (let [new-account (accounts/get-account-by-name account-name)]
+            ;; result of associating account with account manager
+            (accounts/associate-account-manager! (:id new-manager)
+                                                 (:id new-account)))
+          ;; new account was not created
+          new-account-result))
+      ;; manager was not registered
+      register-result)))
 
 (defn get-bouncer-error
   [validation-map ks]
