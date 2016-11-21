@@ -1,3 +1,6 @@
+/* colors */
+/* purples: #7460C8 #4A3C85 #5C4BA4 #7450C8 #9689CF*/
+/* oranges: #E57D56 #FD8C62 */
 @font-face {
     font-family: 'MuseoSansRounded';
     src: url('../fonts/MuseoSansRounded-900.eot');
@@ -16,8 +19,8 @@ body {
 }
 
 .nav-bar-color {
-    background-color: #4E4084;
-    border-color: #4E4084;
+    background-color: #4A3C85;
+    border-color: #4A3C85;
 }
 
 .page-wrapper-color {
@@ -150,7 +153,7 @@ tbody > tr.active > td {
 }
 
 .light-purple-color {
-    color: #68618C;
+    color: #9689CF;
 }
 
 .orange-color {
