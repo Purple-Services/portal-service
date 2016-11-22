@@ -104,7 +104,7 @@
         email "manager@bar.com"
         password "manager"
         full-name "Manager"
-        ;; register a user
+        ;; register a manager
         _ (login-test/register-user! {:db-conn conn
                                       :platform-id email
                                       :password password
@@ -122,8 +122,7 @@
         _ (accounts/associate-account-manager! (:id manager) (:id account))
         child-email "james@purpleapp.com"
         child-password "child"
-        child-full-name "Foo Bar"
-        ]
+        child-full-name "Foo Bar"]
     (with-redefs [common.sendgrid/send-template-email
                   (fn [to subject message
                        & {:keys [from template-id substitutions]}]
