@@ -31,4 +31,9 @@
          :reload-paths ["src"]}
   :aws {:beanstalk {:environments [{:name "portal-dev"}]
                     :s3-bucket "leinbeanstalkpurple"
-                    :region "us-west-2"}})
+                    :region "us-west-2"}}
+  :profiles {:app-integration-test [:dev {:env {:test-db-host "localhost"
+                                                :test-db-name "ebdb_test"
+                                                :test-db-port "3306"
+                                                :test-db-user "root"
+                                                :test-db-password ""}}]})
