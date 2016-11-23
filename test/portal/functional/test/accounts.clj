@@ -22,12 +22,20 @@
 (use-fixtures :each clear-and-populate-test-database-fixture)
 
 (defn account-manager-context-uri
-  [user-id]
-  (str "/account-manager/" user-id))
+  [manager-id]
+  (str "/account-manager/" manager-id))
 
 (defn add-user-uri
-  [user-id]
-  (str (account-manager-context-uri user-id) "/add-user"))
+  [manager-id]
+  (str (account-manager-context-uri manager-id) "/add-user"))
+
+(defn account-users-uri
+  [manager-id]
+  (str (account-manager-context-uri manager-id) "/users"))
+
+(defn manager-get-user-uri
+  [manager-id user-id]
+  (str (account-manager-context-uri manager-id) "/user/" user-id))
 
 (defn response-body-json
   [response]
@@ -147,43 +155,61 @@
                                  {:email second-child-email
                                   :full-name second-child-full-name}
                                  :headers manager-auth-cookie})
-                  (get-in [:body :success]))))
-        (testing "Users can't see other users"
-          ;; can't see their parent account's users
-          ;; add another account, they can't see that either
-          ))
-      (testing "Only account managers can see all vehicles"
-        ;; add some vehicles to manager account and child account
-        ;; manager sees all vehicles
-        )
-      (testing "Child accounts can only see their own vehicles"
-        ;; child can't get account-vehicles
-        ;; child can't see another user's vehicle
-        ;; child can't can't see another vehicle associated with account
-        )
-      (testing "Users can't see other user's vehicles"
-        ;; add a vehicle by another user, not associated with account
-        )
-      (testing "Account managers can see all orders"
-        ;; add orders for manager and child account
-        )
-      (testing "Users can see their own orders"
-        )
-      (testing "... but users can't see orders of other accounts")
-      (testing "Child accounts can't add vehicles")
-      (testing "A user can get their own vehicles"
-        #_ (let [_ (vehicles/create-vehicle! conn (test-vehicles/vehicle-map {})
-                                             {:id user-id})
-                 vehicles-response (portal.handler/handler
-                                    (-> (mock/request
-                                         :get (str "/user/" user-id "/vehicles"))
-                                        (assoc :headers auth-cookie)))
-                 response-body-json (cheshire/parse-string
-                                     (:body vehicles-response) true)]
-             (is (= user-id
-                    (-> response-body-json
-                        first
-                        :user_id)))))
+                  (get-in [:body :success])))
+          (testing "Users can't see other users"
+            ;; can't see their parent account's users
+            (is (= "User does not manage that account"
+                   (-> (get-uri-json :get (account-users-uri child-user-id)
+                                     {:headers child-auth-cookie})
+                       (get-in [:body :message]))))
+            ;; can't see another child account user
+            (is (= "User does not manage that account"
+                   (-> (get-uri-json :get (manager-get-user-uri
+                                           child-user-id
+                                           (:id (login/get-user-by-email
+                                                 conn
+                                                 second-child-email)))
+                                     {:headers child-auth-cookie})
+                       (get-in [:body :message]))))
+            ;; can't see manager account user
+            (is (= "User does not manage that account"
+                   (-> (get-uri-json :get (manager-get-user-uri
+                                           child-user-id
+                                           manager-user-id)
+                                     {:headers child-auth-cookie})
+                       (get-in [:body :message]))))))
+        (testing "Only account managers can see all vehicles"
+          ;; add some vehicles to manager account and child account
+          ;; manager sees all vehicles
+          )
+        (testing "Child accounts can only see their own vehicles"
+          ;; child can't get account-vehicles
+          ;; child can't see another user's vehicle
+          ;; child can't can't see another vehicle associated with account
+          )
+        (testing "Users can't see other user's vehicles"
+          ;; add a vehicle by another user, not associated with account
+          )
+        (testing "Account managers can see all orders"
+          ;; add orders for manager and child account
+          )
+        (testing "Users can see their own orders"
+          )
+        (testing "... but users can't see orders of other accounts")
+        (testing "Child accounts can't add vehicles")
+        (testing "A user can get their own vehicles"
+          #_ (let [_ (vehicles/create-vehicle! conn (test-vehicles/vehicle-map {})
+                                               {:id user-id})
+                   vehicles-response (portal.handler/handler
+                                      (-> (mock/request
+                                           :get (str "/user/" user-id "/vehicles"))
+                                          (assoc :headers auth-cookie)))
+                   response-body-json (cheshire/parse-string
+                                       (:body vehicles-response) true)]
+               (is (= user-id
+                      (-> response-body-json
+                          first
+                          :user_id))))))
       (testing "A user can not access other user's vehicles"
         #_ (let [_ (create-vehicle! conn (vehicle-map {}) {:id second-user-id})
                  vehicles-response (portal.handler/handler

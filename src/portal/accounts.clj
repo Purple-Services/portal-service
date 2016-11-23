@@ -1,6 +1,5 @@
 (ns portal.accounts
   (:require [bouncer.core :as b]
-            [bouncer.validators :as v]
             [crypto.password.bcrypt :as bcrypt]
             [common.config :as config]
             [common.db :as db]
@@ -20,72 +19,16 @@
   [account-name]
   (boolean (db/!select (db/conn) "accounts" [:id] {:name account-name})))
 
-(defn manages-account?
-  "Given an user-id and account-id, determine if they really do manage that
-  account"
-  [user-id account-id]
-  (->>
-   (db/!select (db/conn)
-               "account_managers" [:user_id :account_id] {:user_id user-id})
-   (filter #(= (:account_id %)
-               account-id))
-   first
-   ((fn [account-manager]
-      (boolean (and (= (:account_id account-manager)
-                       account-id)
-                    (= (:user_id account-manager)
-                       user-id)))))))
-(defn process-user
-  "Process a user to be included as a JSON response"
-  [user]
-  (assoc user
-         :timestamp_created
-         (/ (.getTime
-             (:timestamp_created user))
-            1000)
-         :pending
-         (if (= (:pending user) 1)
-           true
-           false)))
-
-(def users-select
-  (str "users.name, users.email, users.phone_number, users.timestamp_created, "
-       "users.id, IF(users.password_hash = '',true,false) AS pending"))
-
-(defn user-account-sql
-  "Given a user-id, return the sql for retrieving that user"
-  [user-id]
-  (str "SELECT " users-select " FROM `users` "
-       "WHERE users.id = '" user-id "';" ))
-
-(defn get-user
-  "Given a user-id and account-id, return the user.
-  account-id is required to determine if the user is a manager,
-  if not account-id is given, assumes the user is not a manager."
-  [user-id & [account-id]]
-  (let [user (first (raw-sql-query
-                     (db/conn)
-                     [(user-account-sql user-id)]))
-        manager? (if-not (nil? account-id)
-                   (manages-account? user-id account-id)
-                   false)]
-    (if-not (empty? user)
-      (-> user
-          (assoc :is-manager manager?)
-          (process-user))
-      {:success false
-       :message "There is no user with that id"})))
-
 (defn account-children-sql
   [account-id]
-  (str "SELECT " users-select " FROM `users` "
+  (str "SELECT " users/users-select " FROM `users` "
        "JOIN account_children ON "
        "account_children.user_id = users.id "
        "WHERE account_children.account_id = '" account-id "';"))
 
 (defn account-managers-sql
   [account-id]
-  (str "SELECT " users-select " FROM `users` "
+  (str "SELECT " users/users-select " FROM `users` "
        "JOIN account_managers ON "
        "account_managers.user_id = users.id "
        "WHERE account_managers.account_id = '" account-id "';"))
@@ -102,7 +45,26 @@
                                [(account-managers-sql account-id)])
                               (map #(assoc % :is-manager true)))]
     (->> (concat account-children account-managers)
-         (map #(process-user %)))))
+         (map #(users/process-user %)))))
+
+(defn get-user
+  "Given a user-id and an account-id, return the user if the user-id
+  is the account manager"
+  [user-id account-id]
+  (if (users/manages-account? user-id account-id)
+    (users/get-user user-id)
+    {:success false
+     :message "User does not manage that account"}))
+
+(defn account-users-response
+  "Given a user-id and an account-id, return all users associated with
+  account. If user-id is not an account-manager of that account, return
+  an error message"
+  [user-id account-id]
+  (if (users/manages-account? user-id account-id)
+    (account-users account-id)
+    {:success false
+     :message "User does not manage that account"}))
 
 (defn get-account-by-name
   "Given an account name, return the id associated with that account"
@@ -134,22 +96,16 @@
               {:user_id user-id
                :account_id account-id}))
 
-(def child-account-validations
-  {:email [[users/platform-id-available?
-            :message "Email address is already in use."]
-           [v/required :message "Email can not be blank!"]]
-   :full-name [[v/required :message "Name can not be blank!"]]})
-
 (defn create-child-account!
   "Create a new child account"
   [{:keys [db-conn new-user manager-id account-id]}]
   ;; make sure this user actually manages the account
-  (cond (not (manages-account? manager-id account-id))
+  (cond (not (users/manages-account? manager-id account-id))
         {:success false
          :message "User does not manage that account"}
-        (not (b/valid? new-user child-account-validations))
+        (not (b/valid? new-user users/child-account-validations))
         {:success false
-         :validation (b/validate new-user child-account-validations)}
+         :validation (b/validate new-user users/child-account-validations)}
         :else
         (let [{:keys [email full-name]} new-user
               new-user-id (util/rand-str-alpha-num 20)
