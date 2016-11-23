@@ -74,16 +74,16 @@
     (testing "email validations work properly"
       (is (b/valid? {:email "foo@bar.com"
                      :full-name "Foo Bar"}
-                    accounts/child-account-validations))
+                    users/child-account-validations))
       (is (= '("Email can not be blank!")
              (get-bouncer-error (b/validate {:email ""
                                              :full-name "Foo Bar"}
-                                            accounts/child-account-validations)
+                                            users/child-account-validations)
                                 [:email])))
       (is (= '("Name can not be blank!")
              (get-bouncer-error (b/validate {:email "foo@bar.com"
                                              :full-name ""}
-                                            accounts/child-account-validations)
+                                            users/child-account-validations)
                                 [:full-name])))
       (let [child-email "foo@bar.com"
             child-password "child"
@@ -96,7 +96,7 @@
                (get-bouncer-error
                 (b/validate {:email child-email
                              :full-name child-full-name}
-                            accounts/child-account-validations)
+                            users/child-account-validations)
                 [:email])))))))
 
 (deftest create-child-account-tests
