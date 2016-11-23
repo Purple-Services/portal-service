@@ -1,15 +1,32 @@
 /* colors */
-/* top toolbar: #423870 */
-/* side toolbar: #68618C */
-/* zebra dark: #E0E0E0 */
-/* orange color: #F88458 */
+/* fill color: #423870 */
+/* fill color: #68618C */
+/* fill color: #F88458 */
+/* chart fill color: #68618C 8% */
+/* chart border color: #E0E0E0 */
 
 @font-face {
     font-family: 'MuseoSansRounded';
     src: url('../fonts/MuseoSansRounded-900.eot');
     src: url('../fonts/MuseoSansRounded-900.eot') format('embedded-opentype'), url('../fonts/MuseoSansRounded-900.woff2') format('woff2'), url('../fonts/MuseoSansRounded-900.woff') format('woff'), url('../fonts/MuseoSansRounded-900.ttf') format('truetype');
 }
-/* set the font */
+
+/* set the font for tables, forms, etc */
+table > tbody > tr, input[type="text"], p, select {
+    font-family: Hind,Verdana,Arial,'sans-serif' !important;
+    font-size: 16px;
+    font-weight: bolder;
+}
+
+h3 {
+    font-family: Hind,Verdana,Arial,'sans-serif' !important;
+    font-weight: bolder;}
+
+tbody > tr:nth-child(1)  {
+    border-top: none;
+}
+
+/* set the font for the rest */
 body {
     /* font-size: 1em !important; */
     font-family: MuseoSansRounded, Verdana, Arial, 'sans-serif' !important;
@@ -81,7 +98,7 @@ body {
 }
 
 .table-bordered {
-    border: 1px solid #ddd !important;
+    border: 1px solid #E0E0E0; !important;
 }
 .table-responsive {
     margin-top: 15px;
@@ -149,14 +166,12 @@ tbody > tr.active > td {
 .purple-login-logo {
     display: block;
     margin: 0 auto;
+    width: 400px;
+    padding-bottom: 1em;
 }
 
 .purple-login-row {
     padding-top: 8em;
-}
-
-.light-purple-color {
-    color: #68618C;
 }
 
 .orange-color {
@@ -172,6 +187,35 @@ tbody > tr.active > td {
 }
 
 .form-border {
-    border: 1px solid #ddd;
+    border: 1px solid #E0E0E0;
     padding: 0.5em;
+}
+
+/* side bar links */
+.sidebar-nav > ul > li > a.active > div {
+    color: #68618C;
+}
+
+/* button colors */
+.btn-default {
+    color: #68618C;
+    border-color: #E0E0E0;
+    text-transform: uppercase;
+}
+
+/* active button colors */
+.btn-default.active, .btn-default.active:focus {
+    background-color: #F88458;
+    color: #FFFFFF;
+}
+
+h3 {
+    color: #68618C;
+}
+
+
+/* table header */
+thead > tr > .fake-link {
+    color: #68618C;
+    text-transform: uppercase;
 }
