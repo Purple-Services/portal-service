@@ -2,6 +2,8 @@
 
 The Clojure Portal Service Server
 
+[![Build Status](https://travis-ci.com/Purple-Services/portal-service.svg?token=qtYcDv5JYzqmyunRnB93&branch=dev)](https://travis-ci.com/Purple-Services/portal-service)
+
 ## Testing
 
 There are two kinds of tests, unit and functional. Unit tests use the standard
