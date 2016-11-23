@@ -6,6 +6,7 @@
   :dependencies [[buddy/buddy-auth "0.8.1"]
                  [clj-time "0.12.0"]
                  [clj-webdriver "0.7.2"]
+                 [org.seleniumhq.selenium/selenium-java "2.48.2"]
                  [bouncer "1.0.0"]
                  [common "2.0.2-SNAPSHOT"]
                  [compojure "1.5.1"]
