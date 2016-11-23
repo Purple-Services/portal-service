@@ -163,26 +163,27 @@
            (GET "/email" []
                 (response
                  {:email (users/get-user-email (conn) user-id)})))
-  (context "/account-manager/:user-id" [user-id]
+  (context "/account-manager/:manager-id" [manager-id]
            (GET "/user/:id" [id]
                 (response
                  (accounts/get-user id
-                                    (accounts/manager-account user-id))))
+                                    (accounts/manager-account manager-id))))
            (GET "/users" []
                 (response
-                 (accounts/account-users (accounts/manager-account user-id))))
+                 (accounts/account-users-response
+                  manager-id (accounts/manager-account manager-id))))
            (POST "/add-user" {body :body}
                  (response
                   (let [new-user (keywordize-keys body)]
                     (accounts/create-child-account!
                      {:db-conn (conn)
                       :new-user new-user
-                      :manager-id user-id
-                      :account-id (accounts/manager-account user-id)}))))
+                      :manager-id manager-id
+                      :account-id (accounts/manager-account manager-id)}))))
            (GET "/vehicles" []
                 (response
                  (vehicles/account-vehicles
-                  (accounts/manager-account user-id)))))
+                  (accounts/manager-account manager-id)))))
   ;; for aws webservices
   (GET "/ok" [] (response {:success true}))
   ;; resources
