@@ -7,7 +7,7 @@
                  [clj-time "0.12.0"]
                  [clj-webdriver "0.7.2"]
                  [bouncer "1.0.0"]
-                 [common "2.0.1-SNAPSHOT"]
+                 [common "2.0.2-SNAPSHOT"]
                  [compojure "1.5.1"]
                  [enlive "1.1.6"]
                  [org.clojure/clojure "1.9.0-alpha11"]
