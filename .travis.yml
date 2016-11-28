@@ -1,8 +1,11 @@
+dist: trusty
 language: clojure
 sudo: required
 addons:
   apt:
     packages:
+      - mysql-server
+      - chromium-chromedriver
       - chromium-browser
 before_install:
   # Chrome Driver for Selenium tests
