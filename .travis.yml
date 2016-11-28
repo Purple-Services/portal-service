@@ -4,7 +4,6 @@ addons:
   apt:
     packages:
       - chromium-browser
-      - chromium-chromedriver
 before_install:
   # Chrome Driver for Selenium tests
   - wget http://chromedriver.storage.googleapis.com/2.21/chromedriver_linux64.zip
