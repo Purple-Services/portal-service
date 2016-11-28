@@ -37,4 +37,7 @@
                                           :test-db-port "3306"
                                           :test-db-user "root"
                                           :test-db-password ""}
-                                    :plugins [[lein-environ "1.1.0"]]}})
+                                    :plugins [[lein-environ "1.1.0"]]}
+             :app-integration-dev-deploy
+             {:aws {:access-key ~(System/getenv "AWS_ACCESS_KEY")
+                    :secret-key ~(System/getenv "AWS_SECRET_KEY")}}})

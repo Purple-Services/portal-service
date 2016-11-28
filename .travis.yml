@@ -35,3 +35,5 @@ notifications:
     on_success: always
     on_failure: always
   email: false
+after_success:
+  - lein with-profile app-integration-dev-deploy beanstalk deploy portal-dev
