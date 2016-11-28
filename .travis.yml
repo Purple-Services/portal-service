@@ -1,12 +1,27 @@
 language: clojure
-lein: 2.5.0
+sudo: required
+addons:
+  apt:
+    packages:
+      - chromium-browser
+      - chromium-chromedriver
 before_install:
+  # Chrome Driver for Selenium tests
+  - wget http://chromedriver.storage.googleapis.com/2.21/chromedriver_linux64.zip
+  - unzip chromedriver_linux64.zip
+  - sudo chmod u+x chromedriver
+  - sudo mv chromedriver /usr/bin/
+  - export CHROME_BIN=chromium-browser
+  - "export DISPLAY=:99.0"
+  - "sh -e /etc/init.d/xvfb start"
+  # install common
   - cd ../
   - git clone git@github.com:Purple-Services/common.git
   - cd common
   - lein install
   - cd ../
   - cd portal-service
+  # setup database
   - mysql -e "DROP DATABASE if exists ebdb_test;" -uroot
   - mysql -e "create database if not exists ebdb_test;" -uroot
 script:
