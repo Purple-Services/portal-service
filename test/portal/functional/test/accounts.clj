@@ -1,12 +1,10 @@
 (ns portal.functional.test.accounts
-  (:require [cheshire.core :as cheshire]
-            [clojure.test :refer [deftest is testing use-fixtures]]
+  (:require [clojure.test :refer [deftest is testing use-fixtures]]
             [common.db :as db]
             [common.util :as util]
             [portal.accounts :as accounts]
             [portal.functional.test.cookies :as cookies]
             [portal.functional.test.vehicles :as test-vehicles ]
-            [portal.handler :refer [handler]]
             [portal.test.db-tools :refer
              [setup-ebdb-test-pool!
               setup-ebdb-test-for-conn-fixture
@@ -15,8 +13,8 @@
               reset-db!]]
             [portal.login :as login]
             [portal.test.login-test :as login-test]
-            [portal.vehicles :as vehicles]
-            [ring.mock.request :as mock]))
+            [portal.test.utils :as test-utils]
+            [portal.vehicles :as vehicles]))
 
 (use-fixtures :once setup-ebdb-test-for-conn-fixture)
 (use-fixtures :each clear-and-populate-test-database-fixture)
@@ -41,32 +39,6 @@
   [manager-id]
   (str (account-manager-context-uri manager-id) "/vehicles"))
 
-(defn response-body-json
-  [response]
-  (cheshire/parse-string
-   (:body response)
-   true))
-
-(defn get-uri-json
-  "Given a request-type key, uri and optional json-body for post requests,
-  return the response. If there is a json body, keywordize it."
-  [request-type uri & [{:keys [json-body headers]
-                        :or {json-body nil
-                             headers nil}}]]
-  (let [json-body (str (if (nil? json-body)
-                         json-body
-                         (cheshire/generate-string
-                          json-body)))
-        mock-request (-> (mock/request
-                          request-type uri
-                          json-body)
-                         (assoc :headers headers)
-                         (mock/content-type
-                          "application/json"))
-        response (portal.handler/handler
-                  mock-request)]
-    (assoc response :body (response-body-json response))))
-
 (deftest account-managers-security
   (with-redefs [common.sendgrid/send-template-email
                 (fn [to subject message
@@ -89,13 +61,10 @@
           account (accounts/get-account-by-name account-name)
           ;; associate manager with account
           _ (accounts/associate-account-manager! (:id manager) (:id account))
-          manager-login-response (portal.handler/handler
-                                  (-> (mock/request
-                                       :post "/login"
-                                       (cheshire/generate-string
-                                        {:email manager-email
-                                         :password manager-password}))
-                                      (mock/content-type "application/json")))
+          manager-login-response (test-utils/get-uri-json
+                                  :post "/login"
+                                  {:json-body {:email manager-email
+                                               :password manager-password}})
           manager-token (cookies/get-cookie-token manager-login-response)
           manager-user-id (cookies/get-cookie-user-id manager-login-response)
           manager-auth-cookie {"cookie" (str "token=" manager-token ";"
@@ -112,13 +81,11 @@
           ;; associate child-account with account
           _ (accounts/associate-child-account! (:id child) (:id account))
           ;; generate auth-cokkie
-          child-login-response (portal.handler/handler
-                                (-> (mock/request
-                                     :post "/login"
-                                     (cheshire/generate-string
-                                      {:email child-email
-                                       :password child-password}))
-                                    (mock/content-type "application/json")))
+          child-login-response (test-utils/get-uri-json
+                                :post "/login"
+                                {:json-body
+                                 {:email child-email
+                                  :password child-password}})
           child-token (cookies/get-cookie-token child-login-response)
           child-user-id (cookies/get-cookie-user-id child-login-response)
           child-auth-cookie {"cookie" (str "token=" child-token ";"
@@ -143,49 +110,50 @@
       (testing "Only account managers can add users"
         ;; child user can't add a user
         (is (= "User does not manage that account"
-               (-> (get-uri-json :post (add-user-uri
-                                        child-user-id)
-                                 {:json-body
-                                  {:email second-child-email
-                                   :full-name second-child-full-name}
-                                  :headers child-auth-cookie})
+               (-> (test-utils/get-uri-json :post (add-user-uri
+                                                   child-user-id)
+                                            {:json-body
+                                             {:email second-child-email
+                                              :full-name second-child-full-name}
+                                             :headers child-auth-cookie})
                    (get-in [:body :message]))))
         ;; account manager can
-        (is (-> (get-uri-json :post (add-user-uri
-                                     manager-user-id)
-                              {:json-body
-                               {:email second-child-email
-                                :full-name second-child-full-name}
-                               :headers manager-auth-cookie})
+        (is (-> (test-utils/get-uri-json :post (add-user-uri
+                                                manager-user-id)
+                                         {:json-body
+                                          {:email second-child-email
+                                           :full-name second-child-full-name}
+                                          :headers manager-auth-cookie})
                 (get-in [:body :success])))
         (testing "Users can't see other users"
           ;; can't see their parent account's users
           (is (= "User does not manage that account"
-                 (-> (get-uri-json :get (account-users-uri child-user-id)
-                                   {:headers child-auth-cookie})
+                 (-> (test-utils/get-uri-json
+                      :get (account-users-uri child-user-id)
+                      {:headers child-auth-cookie})
                      (get-in [:body :message]))))
           ;; can't see another child account user
           (is (= "User does not manage that account"
-                 (-> (get-uri-json :get (manager-get-user-uri
-                                         child-user-id
-                                         (:id (login/get-user-by-email
-                                               conn
-                                               second-child-email)))
-                                   {:headers child-auth-cookie})
+                 (-> (test-utils/get-uri-json :get (manager-get-user-uri
+                                                    child-user-id
+                                                    (:id (login/get-user-by-email
+                                                          conn
+                                                          second-child-email)))
+                                              {:headers child-auth-cookie})
                      (get-in [:body :message]))))
           ;; can't see manager account user
           (is (= "User does not manage that account"
-                 (-> (get-uri-json :get (manager-get-user-uri
-                                         child-user-id
-                                         manager-user-id)
-                                   {:headers child-auth-cookie})
+                 (-> (test-utils/get-uri-json :get (manager-get-user-uri
+                                                    child-user-id
+                                                    manager-user-id)
+                                              {:headers child-auth-cookie})
                      (get-in [:body :message]))))
           ;; ...but the manager can see the account user
           (is (= child-user-id
-                 (-> (get-uri-json :get (manager-get-user-uri
-                                         manager-user-id
-                                         child-user-id)
-                                   {:headers manager-auth-cookie})
+                 (-> (test-utils/get-uri-json :get (manager-get-user-uri
+                                                    manager-user-id
+                                                    child-user-id)
+                                              {:headers manager-auth-cookie})
                      (get-in [:body :id])))))
         (testing "Only account managers can see all vehicles"
           ;; add some vehicles to manager account and child account
@@ -214,9 +182,9 @@
                                                 second-child-email))})
           ;; manager sees all vehicles
           (is (= 4
-                 (-> (get-uri-json :get (manager-vehicles-uri
-                                         manager-user-id)
-                                   {:headers manager-auth-cookie})
+                 (-> (test-utils/get-uri-json :get (manager-vehicles-uri
+                                                    manager-user-id)
+                                              {:headers manager-auth-cookie})
                      (get-in [:body])
                      (count)))))
         (testing "Child accounts can only see their own vehicles"
