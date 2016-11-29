@@ -205,17 +205,17 @@
     :title "Page not found"}))
 
 (defn wrap-fallback-exception
-  "Catch exceptions and present a server error message"
-  [handler]
+  "Catch exceptions and present a server error message with handler, h"
+  [h]
   (fn [request]
     (if (= config/db-user "purplemasterprod")
       (try
-        (handler request)
+        (h request)
         (catch Exception e
           (do
             (.println *err* (str (time/now) " " e))
             {:status 500 :body "Server Error - 500 Placeholder"})))
-      (handler request))))
+      (h request))))
 
 (def handler
   (->
