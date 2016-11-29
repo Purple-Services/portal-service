@@ -6,13 +6,8 @@
             [common.util :as util]
             [common.sendgrid :as sendgrid]
             [portal.db :refer [raw-sql-query]]
-            [portal.users :as users]))
-
-(defn manager-account
-  "Given a user-id, return the account-id asociated with the account"
-  [user-id]
-  (:account_id (first (db/!select (db/conn) "account_managers" [:account_id]
-                                  {:user_id user-id}))))
+            [portal.users :as users]
+            [portal.vehicles :as vehicles]))
 
 (defn account-name-exists?
   "Is there already an account with this name?"
@@ -47,25 +42,6 @@
     (->> (concat account-children account-managers)
          (map #(users/process-user %)))))
 
-(defn get-user
-  "Given a user-id and an account-id, return the user if the user-id
-  is the account manager"
-  [manager-id account-id user-id]
-  (if (users/manages-account? manager-id account-id)
-    (users/get-user user-id)
-    {:success false
-     :message "User does not manage that account"}))
-
-(defn account-users-response
-  "Given a user-id and an account-id, return all users associated with
-  account. If user-id is not an account-manager of that account, return
-  an error message"
-  [account-id manager-id]
-  (if (users/manages-account? manager-id account-id)
-    (account-users account-id)
-    {:success false
-     :message "User does not manage that account"}))
-
 (defn get-account-by-name
   "Given an account name, return the id associated with that account"
   [account-name]
@@ -98,12 +74,9 @@
 
 (defn create-child-account!
   "Create a new child account"
-  [{:keys [db-conn new-user manager-id account-id]}]
+  [account-id new-user]
   ;; make sure this user actually manages the account
-  (cond (not (users/manages-account? manager-id account-id))
-        {:success false
-         :message "User does not manage that account"}
-        (not (b/valid? new-user users/child-account-validations))
+  (cond (not (b/valid? new-user users/child-account-validations))
         {:success false
          :validation (b/validate new-user users/child-account-validations)}
         :else
@@ -113,7 +86,7 @@
           ;; register a user with a blank password
           ;; will not be able to login without resetting
           ;; password
-          (db/!insert db-conn "users"
+          (db/!insert (db/conn) "users"
                       {:id new-user-id
                        :email email
                        :type "native"
@@ -136,3 +109,21 @@
                  "<br />" config/base-url "reset-password/" reset-key)})
           {:success true
            :id new-user-id})))
+
+(defn account-vehicles-sql
+  [account-id]
+  (str "SELECT " vehicles/vehicles-select " FROM `vehicles` "
+       "LEFT JOIN account_children ON "
+       "account_children.user_id = vehicles.user_id "
+       "LEFT JOIN account_managers ON "
+       "account_managers.user_id = vehicles.user_id "
+       "WHERE account_managers.account_id = '" account-id "' "
+       "OR account_children.account_id = '" account-id "';"))
+
+(defn account-vehicles
+  "Given an account-id, return all vehicles associated with this account"
+  [account-id]
+  (let [account-vehicles (raw-sql-query
+                          (db/conn)
+                          [(account-vehicles-sql account-id)])]
+    (map #(vehicles/process-vehicle %) account-vehicles)))
