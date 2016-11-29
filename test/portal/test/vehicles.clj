@@ -1,8 +1,9 @@
-(ns portal.test.accounts
+(ns portal.test.vehicles
   (:require [bouncer.core :as b]
             [clojure.test :refer [use-fixtures is run-tests deftest testing]]
             [common.db :as db]
             [common.util :as util]
+            [portal.test.utils :refer [get-bouncer-error]]
             [portal.functional.test.vehicles :as test-vehicles]
             [portal.test.db-tools :as db-tools]
             [portal.vehicles :as vehicles]))
