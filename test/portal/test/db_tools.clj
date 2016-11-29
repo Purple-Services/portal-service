@@ -112,16 +112,16 @@
 
 (defn database-fixture
   "Remove all test data from the database"
-  [test]
+  [t]
   (clear-and-populate-test-database)
   ;; run the test
-  (test)
+  (t)
   (clear-test-database))
 
 (defn setup-ebdb-test-for-conn-fixture
-  [test]
+  [t]
   (setup-ebdb-test-pool!)
-  (test)
+  (t)
   (clear-test-database)
   ;; close out the db connection
   (.close (:datasource (db/conn))))
