@@ -42,15 +42,19 @@
   "Given a user-id, return the accounts associated with the user"
   [user-id]
   (let [account-ids
-        (map :account_id (db/!select (db/conn) "accounts_managers" [:user_id
-                                                                    :account_id]
+        (map :account_id (db/!select (db/conn) "account_managers" [:user_id
+                                                                   :account_id]
                                      {:user_id user-id}))]
     (if-not (empty? account-ids)
-      (let [account-ids-string (str "(" (s/join ", " account-ids) ")")
+      (let [account-ids-strings (map #(str "'" % "'") account-ids)
+            account-ids-strings-sql (str "("
+                                         (s/join ", " account-ids-strings)
+                                         ")")
             accounts (raw-sql-query
                       (db/conn)
                       [(str "SELECT id,name from accounts where `id` IN "
-                            account-ids-string ";")])])
+                            account-ids-strings-sql";")])]
+        accounts)
       {:success false
        :message "There are no accounts associated with this user."})))
 

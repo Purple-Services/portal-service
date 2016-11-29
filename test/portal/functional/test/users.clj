@@ -18,6 +18,9 @@
 ;; (reset-db!) ; note: most tests will need this run between
 ;; -- run more tests
 
+;; occasionally, there might be a thread lock
+;; use:
+;; (portal.test.db-tools/set-new-db-pool! portal.test.db-tools/ebdb-test-config)
 (use-fixtures :once setup-ebdb-test-for-conn-fixture)
 (use-fixtures :each clear-and-populate-test-database-fixture)
 
@@ -35,10 +38,8 @@
                                                 {:json-body
                                                  {:email email
                                                   :password password}})
-        token (cookies/get-cookie-token login-response)
+        auth-cookie (cookies/auth-cookie login-response)
         user-id (cookies/get-cookie-user-id login-response)
-        auth-cookie {"cookie" (str "token=" token ";"
-                                   " user-id=" user-id)}
         ;; second user
         second-email "baz@qux.com"
         second-password "bazqux"
@@ -61,8 +62,12 @@
                                           (str "/user/" second-user-id "/email")
                                           {:headers auth-cookie})
                  (get-in [:status])))))
-    (testing "A regular user does not have accounts associated with them")
-    ))
+    (testing "A regular user does not have accounts associated with them"
+      (is (= "There are no accounts associated with this user."
+             (-> (test-utils/get-uri-json :get
+                                          (str "/user/" user-id "/accounts")
+                                          {:headers auth-cookie})
+                 (get-in [:body :message])))))))
 
 (deftest managed-account-login
   (let [conn (db/conn)
@@ -74,22 +79,44 @@
                                       :platform-id email
                                       :password password
                                       :full-name full-name})
-        manager (users/get-user-by-email conn email)]
+        manager (users/get-user-by-email conn email)
+        login-response (test-utils/get-uri-json :post "/login"
+                                                {:json-body
+                                                 {:email email
+                                                  :password password}})
+        auth-cookie (cookies/auth-cookie login-response)
+        user-id (cookies/get-cookie-user-id login-response)]
     (testing "Account manager logs in, but they are not yet an account manager"
-      (let [login-response (test-utils/get-uri-json :post "/login"
-                                                    {:json-body
-                                                     {:email email
-                                                      :password password}})]
-        (is (not (cookies/get-cookie-account-manager? login-response)))))
+      (is (= "There are no accounts associated with this user."
+             (-> (test-utils/get-uri-json :get
+                                          (str "/user/" user-id "/accounts")
+                                          {:headers auth-cookie})
+                 (get-in [:body :message])))))
     (testing "Account is created and account manager is an account manager"
       (let [;; register an account
             _ (accounts/create-account! "FooBar.com")
             ;; retrieve the account
             account (accounts/get-account-by-name "FooBar.com")
             ;; associate manager with account
-            _ (accounts/associate-account-manager! (:id manager) (:id account))
-            ;; grab accounts user manages
-            ]
-        ))
-    (testing "Account manager manages multiple accounts")
-    ))
+            _ (accounts/associate-account-manager! (:id manager) (:id account))]
+        (is (= "FooBar.com"
+               (-> (test-utils/get-uri-json :get
+                                            (str "/user/" user-id "/accounts")
+                                            {:headers auth-cookie})
+                   (get-in [:body])
+                   first
+                   :name)))))
+    (testing "Account manager manages multiple accounts"
+      (let [;; register another account
+            _ (accounts/create-account! "BazQux.com")
+            ;; retrieve the account
+            account (accounts/get-account-by-name "BazQux.com")
+            ;; associate manager with account
+            _ (accounts/associate-account-manager! (:id manager) (:id account))]
+        (is (= (sort '("BazQux.com" "FooBar.com"))
+               (-> (test-utils/get-uri-json :get
+                                            (str "/user/" user-id "/accounts")
+                                            {:headers auth-cookie})
+                   (get-in [:body])
+                   (#(map :name %))
+                   sort)))))))

@@ -22,3 +22,11 @@
     (re-find #"account-manager=([a-zA-Z0-9]*);"
              (first (filter (partial re-matches #"account-manager.*")
                             (get-in response [:headers "Set-Cookie"])))))))
+
+(defn auth-cookie
+  "Given a response from /login, create an auth cookie"
+  [response]
+  (let [token (get-cookie-token response)
+        user-id (get-cookie-user-id response)]
+    {"cookie" (str "token=" token ";"
+                   " user-id=" user-id)}))
