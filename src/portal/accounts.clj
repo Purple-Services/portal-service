@@ -50,8 +50,8 @@
 (defn get-user
   "Given a user-id and an account-id, return the user if the user-id
   is the account manager"
-  [user-id account-id]
-  (if (users/manages-account? user-id account-id)
+  [manager-id account-id user-id]
+  (if (users/manages-account? manager-id account-id)
     (users/get-user user-id)
     {:success false
      :message "User does not manage that account"}))
@@ -60,8 +60,8 @@
   "Given a user-id and an account-id, return all users associated with
   account. If user-id is not an account-manager of that account, return
   an error message"
-  [user-id account-id]
-  (if (users/manages-account? user-id account-id)
+  [account-id manager-id]
+  (if (users/manages-account? manager-id account-id)
     (account-users account-id)
     {:success false
      :message "User does not manage that account"}))
