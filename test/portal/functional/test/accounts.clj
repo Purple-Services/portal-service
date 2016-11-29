@@ -37,6 +37,10 @@
   [manager-id user-id]
   (str (account-manager-context-uri manager-id) "/user/" user-id))
 
+(defn manager-vehicles-uri
+  [manager-id]
+  (str (account-manager-context-uri manager-id) "/vehicles"))
+
 (defn response-body-json
   [response]
   (cheshire/parse-string
@@ -123,8 +127,8 @@
           _ (accounts/create-account! "BazQux.com")
           ;; retrieve the account
           another-account (accounts/get-account-by-name "BaxQux.com")
-
-
+          second-child-email "baz@bar.com"
+          second-child-full-name "Baz Bar"
           ;; second user
           ;; second-email "baz@qux.com"
           ;; second-password "bazqux"
@@ -137,53 +141,93 @@
           ;; second-user-id (:id second-user)
           ]
       (testing "Only account managers can add users"
-        (let [second-child-email "baz@bar.com"
-              second-child-full-name "Baz Bar"]
-          ;; child user can't add a user
+        ;; child user can't add a user
+        (is (= "User does not manage that account"
+               (-> (get-uri-json :post (add-user-uri
+                                        child-user-id)
+                                 {:json-body
+                                  {:email second-child-email
+                                   :full-name second-child-full-name}
+                                  :headers child-auth-cookie})
+                   (get-in [:body :message]))))
+        ;; account manager can
+        (is (-> (get-uri-json :post (add-user-uri
+                                     manager-user-id)
+                              {:json-body
+                               {:email second-child-email
+                                :full-name second-child-full-name}
+                               :headers manager-auth-cookie})
+                (get-in [:body :success])))
+        (testing "Users can't see other users"
+          ;; can't see their parent account's users
           (is (= "User does not manage that account"
-                 (-> (get-uri-json :post (add-user-uri
-                                          child-user-id)
-                                   {:json-body
-                                    {:email second-child-email
-                                     :full-name second-child-full-name}
-                                    :headers child-auth-cookie})
+                 (-> (get-uri-json :get (account-users-uri child-user-id)
+                                   {:headers child-auth-cookie})
                      (get-in [:body :message]))))
-          ;; account manager can
-          (is (-> (get-uri-json :post (add-user-uri
-                                       manager-user-id)
-                                {:json-body
-                                 {:email second-child-email
-                                  :full-name second-child-full-name}
-                                 :headers manager-auth-cookie})
-                  (get-in [:body :success])))
-          (testing "Users can't see other users"
-            ;; can't see their parent account's users
-            (is (= "User does not manage that account"
-                   (-> (get-uri-json :get (account-users-uri child-user-id)
-                                     {:headers child-auth-cookie})
-                       (get-in [:body :message]))))
-            ;; can't see another child account user
-            (is (= "User does not manage that account"
-                   (-> (get-uri-json :get (manager-get-user-uri
-                                           child-user-id
-                                           (:id (login/get-user-by-email
-                                                 conn
-                                                 second-child-email)))
-                                     {:headers child-auth-cookie})
-                       (get-in [:body :message]))))
-            ;; can't see manager account user
-            (is (= "User does not manage that account"
-                   (-> (get-uri-json :get (manager-get-user-uri
-                                           child-user-id
-                                           manager-user-id)
-                                     {:headers child-auth-cookie})
-                       (get-in [:body :message]))))))
+          ;; can't see another child account user
+          (is (= "User does not manage that account"
+                 (-> (get-uri-json :get (manager-get-user-uri
+                                         child-user-id
+                                         (:id (login/get-user-by-email
+                                               conn
+                                               second-child-email)))
+                                   {:headers child-auth-cookie})
+                     (get-in [:body :message]))))
+          ;; can't see manager account user
+          (is (= "User does not manage that account"
+                 (-> (get-uri-json :get (manager-get-user-uri
+                                         child-user-id
+                                         manager-user-id)
+                                   {:headers child-auth-cookie})
+                     (get-in [:body :message]))))
+          ;; ...but the manager can see the account user
+          (is (= child-user-id
+                 (-> (get-uri-json :get (manager-get-user-uri
+                                         manager-user-id
+                                         child-user-id)
+                                   {:headers manager-auth-cookie})
+                     (get-in [:body :id])))))
         (testing "Only account managers can see all vehicles"
           ;; add some vehicles to manager account and child account
+          (test-vehicles/create-vehicle! conn
+                                         (test-vehicles/vehicle-map {})
+                                         {:id manager-user-id})
+          (test-vehicles/create-vehicle! conn
+                                         (test-vehicles/vehicle-map
+                                          {:color "red"
+                                           :year "2006"})
+                                         {:id manager-user-id})
+          (test-vehicles/create-vehicle! conn
+                                         (test-vehicles/vehicle-map
+                                          {:make "Honda"
+                                           :model "Accord"
+                                           :color "Silver"})
+                                         {:id child-user-id})
+          (test-vehicles/create-vehicle! conn
+                                         (test-vehicles/vehicle-map
+                                          {:make "Hyundai"
+                                           :model "Sonota"
+                                           :color "Orange"})
+                                         {:id (:id
+                                               (login/get-user-by-email
+                                                conn
+                                                second-child-email))})
           ;; manager sees all vehicles
-          )
+          (is (= 4
+                 (-> (get-uri-json :get (manager-vehicles-uri
+                                         manager-user-id)
+                                   {:headers manager-auth-cookie})
+                     (get-in [:body])
+                     (count)))))
         (testing "Child accounts can only see their own vehicles"
-          ;; child can't get account-vehicles
+          ;; (println (-> (get-uri-json :get (manager-vehicles-uri
+          ;;                                  child-user-id)
+          ;;                            {:headers child-auth-cookie})))
+          ;; ;; child can't get account-vehicles
+          ;; (is (not (-> (get-uri-json :get (manager-vehicles-uri
+          ;;                                  child-user-id)
+          ;;                            {:headers child-auth-cookie})
+          ;;              (get-in [:body :success]))))
           ;; child can't see another user's vehicle
           ;; child can't can't see another vehicle associated with account
           )

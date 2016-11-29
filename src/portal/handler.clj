@@ -164,14 +164,15 @@
                 (response
                  {:email (users/get-user-email (conn) user-id)})))
   (context "/account-manager/:manager-id" [manager-id]
-           (GET "/user/:id" [id]
+           (GET "/user/:user-id" [user-id]
                 (response
-                 (accounts/get-user id
-                                    (accounts/manager-account manager-id))))
+                 (accounts/get-user manager-id
+                                    (accounts/manager-account manager-id)
+                                    user-id)))
            (GET "/users" []
                 (response
                  (accounts/account-users-response
-                  manager-id (accounts/manager-account manager-id))))
+                  (accounts/manager-account manager-id) manager-id)))
            (POST "/add-user" {body :body}
                  (response
                   (let [new-user (keywordize-keys body)]
