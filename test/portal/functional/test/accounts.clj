@@ -20,24 +20,24 @@
 (use-fixtures :each clear-and-populate-test-database-fixture)
 
 (defn account-manager-context-uri
-  [manager-id]
-  (str "/account-manager/" manager-id))
+  [account-id manager-id]
+  (str "/account/" account-id "/manager/" manager-id))
 
 (defn add-user-uri
-  [manager-id]
-  (str (account-manager-context-uri manager-id) "/add-user"))
+  [account-id manager-id]
+  (str (account-manager-context-uri account-id manager-id) "/add-user"))
 
 (defn account-users-uri
-  [manager-id]
-  (str (account-manager-context-uri manager-id) "/users"))
+  [account-id manager-id]
+  (str (account-manager-context-uri account-id manager-id) "/users"))
 
 (defn manager-get-user-uri
-  [manager-id user-id]
-  (str (account-manager-context-uri manager-id) "/user/" user-id))
+  [account-id manager-id user-id]
+  (str (account-manager-context-uri account-id manager-id) "/user/" user-id))
 
 (defn manager-vehicles-uri
-  [manager-id]
-  (str (account-manager-context-uri manager-id) "/vehicles"))
+  [account-id manager-id]
+  (str (account-manager-context-uri account-id manager-id) "/vehicles"))
 
 (deftest account-managers-security
   (with-redefs [common.sendgrid/send-template-email
@@ -59,16 +59,15 @@
           _ (accounts/create-account! account-name)
           ;; retrieve the account
           account (accounts/get-account-by-name account-name)
+          account-id (:id account)
           ;; associate manager with account
           _ (accounts/associate-account-manager! (:id manager) (:id account))
           manager-login-response (test-utils/get-uri-json
                                   :post "/login"
                                   {:json-body {:email manager-email
                                                :password manager-password}})
-          manager-token (cookies/get-cookie-token manager-login-response)
           manager-user-id (cookies/get-cookie-user-id manager-login-response)
-          manager-auth-cookie {"cookie" (str "token=" manager-token ";"
-                                             " user-id=" manager-user-id)}
+          manager-auth-cookie (cookies/auth-cookie manager-login-response)
           ;; child account
           child-email "james@purpleapp.com"
           child-password "child"
@@ -86,10 +85,8 @@
                                 {:json-body
                                  {:email child-email
                                   :password child-password}})
-          child-token (cookies/get-cookie-token child-login-response)
           child-user-id (cookies/get-cookie-user-id child-login-response)
-          child-auth-cookie {"cookie" (str "token=" child-token ";"
-                                           " user-id=" child-user-id)}
+          child-auth-cookie (cookies/auth-cookie child-login-response)
           ;; register another account
           _ (accounts/create-account! "BazQux.com")
           ;; retrieve the account
@@ -109,16 +106,18 @@
           ]
       (testing "Only account managers can add users"
         ;; child user can't add a user
-        (is (= "User does not manage that account"
+        (is (= 403
                (-> (test-utils/get-uri-json :post (add-user-uri
+                                                   account-id
                                                    child-user-id)
                                             {:json-body
                                              {:email second-child-email
                                               :full-name second-child-full-name}
                                              :headers child-auth-cookie})
-                   (get-in [:body :message]))))
+                   (get-in [:status]))))
         ;; account manager can
         (is (-> (test-utils/get-uri-json :post (add-user-uri
+                                                account-id
                                                 manager-user-id)
                                          {:json-body
                                           {:email second-child-email
@@ -127,30 +126,34 @@
                 (get-in [:body :success])))
         (testing "Users can't see other users"
           ;; can't see their parent account's users
-          (is (= "User does not manage that account"
+          (is (= 403
                  (-> (test-utils/get-uri-json
-                      :get (account-users-uri child-user-id)
+                      :get (account-users-uri account-id child-user-id)
                       {:headers child-auth-cookie})
-                     (get-in [:body :message]))))
+                     (get-in [:status]))))
           ;; can't see another child account user
-          (is (= "User does not manage that account"
+          (is (= 403
                  (-> (test-utils/get-uri-json :get (manager-get-user-uri
+                                                    account-id
                                                     child-user-id
-                                                    (:id (login/get-user-by-email
-                                                          conn
-                                                          second-child-email)))
+                                                    (:id
+                                                     (login/get-user-by-email
+                                                      conn
+                                                      second-child-email)))
                                               {:headers child-auth-cookie})
-                     (get-in [:body :message]))))
+                     (get-in [:status]))))
           ;; can't see manager account user
-          (is (= "User does not manage that account"
+          (is (= 403
                  (-> (test-utils/get-uri-json :get (manager-get-user-uri
+                                                    account-id
                                                     child-user-id
                                                     manager-user-id)
                                               {:headers child-auth-cookie})
-                     (get-in [:body :message]))))
+                     (get-in [:status]))))
           ;; ...but the manager can see the account user
           (is (= child-user-id
                  (-> (test-utils/get-uri-json :get (manager-get-user-uri
+                                                    account-id
                                                     manager-user-id
                                                     child-user-id)
                                               {:headers manager-auth-cookie})
@@ -183,6 +186,7 @@
           ;; manager sees all vehicles
           (is (= 4
                  (-> (test-utils/get-uri-json :get (manager-vehicles-uri
+                                                    account-id
                                                     manager-user-id)
                                               {:headers manager-auth-cookie})
                      (get-in [:body])

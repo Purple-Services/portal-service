@@ -6,7 +6,9 @@
             [portal.accounts :as accounts]
             [portal.login :as login]
             [portal.users :as users]
-            [portal.test.db-tools :as db-tools]
+            [portal.test.db-tools :refer [reset-db!
+                                          setup-ebdb-test-for-conn-fixture
+                                          clear-and-populate-test-database-fixture]]
             [portal.test.login-test :as login-test]
             [portal.test.utils :refer [get-bouncer-error]]))
 
@@ -14,10 +16,11 @@
 ;; (setup-ebdb-test-pool!) ; initialize
 ;;
 ;; -- run tests --
-;; (db-tools/reset-db!) ; note: most tests will need this run between
+;; (reset-db!) ; note: most tests will need this run between
 ;; -- run more tests
 
-(use-fixtures :each db-tools/setup-ebdb-test-for-conn-fixture)
+(use-fixtures :once setup-ebdb-test-for-conn-fixture)
+(use-fixtures :each clear-and-populate-test-database-fixture)
 
 (defn manually-create-child-account!
   [account-map]
@@ -130,17 +133,6 @@
       (testing "An account manager can add a user to an account they manage"
         (is (:success
              (accounts/create-child-account!
-              {:db-conn conn
-               :new-user {:email child-email
-                          :full-name child-full-name}
-               :manager-id (:id manager)
-               :account-id (:id account)}))))
-      (testing "..but they can NOT add a user to an account they don't manage"
-        (is (= "User does not manage that account"
-               (:message
-                (accounts/create-child-account!
-                 {:db-conn conn
-                  :new-user {:email child-email
-                             :full-name child-full-name}
-                  :manager-id (:id manager)
-                  :account-id (:id another-account)}))))))))
+              (:id account)
+              {:email child-email
+               :full-name child-full-name})))))))

@@ -38,16 +38,6 @@
        "vehicles.only_top_tier, vehicles.license_plate, "
        "vehicles.timestamp_created"))
 
-(defn account-vehicles-sql
-  [account-id]
-  (str "SELECT " vehicles-select " FROM `vehicles` "
-       "LEFT JOIN account_children ON "
-       "account_children.user_id = vehicles.user_id "
-       "LEFT JOIN account_managers ON "
-       "account_managers.user_id = vehicles.user_id "
-       "WHERE account_managers.account_id = '" account-id "' "
-       "OR account_children.account_id = '" account-id "';"))
-
 (defn process-vehicle
   "Process a vehicle to included as a JSON response"
   [vehicle]
@@ -63,14 +53,6 @@
   (first (db/!select (db/conn) "vehicles"
                      vehicle-cols
                      {:id vehicle-id})))
-
-(defn account-vehicles
-  "Given an account-id, return all vehicles associated with this account"
-  [account-id]
-  (let [vehicles (raw-sql-query
-                  (db/conn)
-                  [(account-vehicles-sql account-id)])]
-    (map #(process-vehicle %) vehicles)))
 
 (def vehicle-validations
   {;; confirm that the user_id is either their own, or belongs to

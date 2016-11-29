@@ -41,14 +41,26 @@
     (boolean (= cookie-user-id request-user-id))))
 
 (defn manager-id-matches-cookies?
-  "Given a route of /account-manager/<id>, check that the <id> matches the token
-  and user-id of the cookies"
+  "Given a route of /account/<account-id>/manager/<manager-id>, check that the
+  <manager-id> matches the token and user-id of the cookies"
   [request]
   (let [cookies (keywordize-keys (:cookies request))
         cookie-user-id (get-in cookies [:user-id :value])
         uri (:uri request)
-        request-user-id (second (re-matches #"/account-manager/([a-zA-Z0-9]{20})/.*" uri))]
+        request-user-id (second (re-matches #"/account/[a-zA-Z0-9]{20}/manager/([a-zA-Z0-9]{20})/.*"
+                                            uri))]
     (boolean (= cookie-user-id request-user-id))))
+
+(defn manager-id-manages-account?
+  "Given a route of /account/<account-id>/manager/<manager-id>, check that the
+  <manager-id> actually manages <account-id>"
+  [request]
+  (let [uri (:uri request)
+        reg-match (re-matches #"/account/([a-zA-Z0-9]{20})/manager/([a-zA-Z0-9]{20})/.*"
+                              uri)
+        account-id (second reg-match)
+        manager-id (nth reg-match 2)]
+    (users/manages-account? manager-id account-id)))
 
 (defn on-error
   [request value]
@@ -85,10 +97,11 @@
                       ((juxt user-id-matches-cookies?
                              valid-session-wrapper?) %))
     :on-error on-error}
-   {:pattern #"/account-manager/.*/.*"
+   {:pattern #"/account/.*/manager/.*"
     :handler #(every? true?
                       ((juxt manager-id-matches-cookies?
-                             valid-session-wrapper?) %))
+                             valid-session-wrapper?
+                             manager-id-manages-account?) %))
     :on-error on-error}
    {:pattern #".*(/.*|$)"
     :handler valid-session-wrapper?
@@ -168,28 +181,20 @@
            (GET "/accounts" []
                 (response
                  (users/user-accounts user-id))))
-  (context "/account-manager/:manager-id" [manager-id]
+  (context "/account/:account-id/manager/:manager-id" [account-id manager-id]
            (GET "/user/:user-id" [user-id]
                 (response
-                 (accounts/get-user manager-id
-                                    (accounts/manager-account manager-id)
-                                    user-id)))
+                 (users/get-user user-id)))
            (GET "/users" []
                 (response
-                 (accounts/account-users-response
-                  (accounts/manager-account manager-id) manager-id)))
+                 (accounts/account-users account-id)))
            (POST "/add-user" {body :body}
                  (response
                   (let [new-user (keywordize-keys body)]
-                    (accounts/create-child-account!
-                     {:db-conn (conn)
-                      :new-user new-user
-                      :manager-id manager-id
-                      :account-id (accounts/manager-account manager-id)}))))
+                    (accounts/create-child-account! account-id new-user))))
            (GET "/vehicles" []
                 (response
-                 (vehicles/account-vehicles
-                  (accounts/manager-account manager-id)))))
+                 (accounts/account-vehicles account-id))))
   ;; for aws webservices
   (GET "/ok" [] (response {:success true}))
   ;; resources
