@@ -1,5 +1,6 @@
 (ns portal.users
   (:require [bouncer.validators :as v]
+            [clojure.string :as s]
             [common.db :as db]
             [common.util :as util]
             [crypto.password.bcrypt :as bcrypt]
@@ -36,6 +37,22 @@
                        account-id)
                     (= (:user_id account-manager)
                        user-id)))))))
+
+(defn user-accounts
+  "Given a user-id, return the accounts associated with the user"
+  [user-id]
+  (let [account-ids
+        (map :account_id (db/!select (db/conn) "accounts_managers" [:user_id
+                                                                    :account_id]
+                                     {:user_id user-id}))]
+    (if-not (empty? account-ids)
+      (let [account-ids-string (str "(" (s/join ", " account-ids) ")")
+            accounts (raw-sql-query
+                      (db/conn)
+                      [(str "SELECT id,name from accounts where `id` IN "
+                            account-ids-string ";")])])
+      {:success false
+       :message "There are no accounts associated with this user."})))
 
 (defn platform-id-available?
   [platform-id]

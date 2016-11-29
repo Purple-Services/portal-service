@@ -1,25 +1,25 @@
 (ns portal.functional.test.users
-  (:require [cheshire.core :as cheshire]
-            [clojure.test :refer [deftest is testing use-fixtures run-tests]]
+  (:require [clojure.test :refer [deftest is testing use-fixtures run-tests]]
             [common.db :as db]
             [portal.accounts :as accounts]
             [portal.functional.test.cookies :as cookies]
-            [portal.handler :as handler]
             [portal.login :as login]
-            [portal.test.db-tools :as db-tools]
+            [portal.test.db-tools :refer [setup-ebdb-test-for-conn-fixture
+                                          clear-and-populate-test-database-fixture
+                                          reset-db!]]
             [portal.test.login-test :as login-test]
-            [portal.users :as users]
-            [ring.mock.request :as mock]))
+            [portal.test.utils :as test-utils]
+            [portal.users :as users]))
 
 ;; for manual testing:
-;; (db-tools/reset-db!) ; initial setup
+;; (reset-db!) ; initial setup
 ;;
 ;; -- run tests --
-;; (db-tools/reset-db!) ; note: most tests will need this run between
+;; (reset-db!) ; note: most tests will need this run between
 ;; -- run more tests
 
-(use-fixtures :once db-tools/setup-ebdb-test-for-conn-fixture)
-(use-fixtures :each db-tools/clear-and-populate-test-database-fixture)
+(use-fixtures :once setup-ebdb-test-for-conn-fixture)
+(use-fixtures :each clear-and-populate-test-database-fixture)
 
 (deftest users-email-address
   (let [conn (db/conn)
@@ -30,12 +30,11 @@
                                       :platform-id email
                                       :password password
                                       :full-name full-name})
-        login-response (handler/handler
-                        (-> (mock/request
-                             :post "/login"
-                             (cheshire/generate-string {:email email
-                                                        :password password}))
-                            (mock/content-type "application/json")))
+        login-response (test-utils/get-uri-json :post
+                                                "/login"
+                                                {:json-body
+                                                 {:email email
+                                                  :password password}})
         token (cookies/get-cookie-token login-response)
         user-id (cookies/get-cookie-user-id login-response)
         auth-cookie {"cookie" (str "token=" token ";"
@@ -52,18 +51,18 @@
         second-user-id (:id second-user)]
     (testing "A user can retrieve their own email address"
       (is (= "foo@bar.com"
-             (:email (cheshire/parse-string
-                      (:body (handler/handler
-                              (-> (mock/request
-                                   :get (str "/user/" user-id "/email"))
-                                  (assoc :headers auth-cookie))))
-                      true)))))
+             (-> (test-utils/get-uri-json :get
+                                          (str "/user/" user-id "/email")
+                                          {:headers auth-cookie})
+                 (get-in [:body :email])))))
     (testing "A user can not access other people's email address"
       (is (= 403
-             (:status (handler/handler
-                       (-> (mock/request
-                            :get (str "/user/" second-user-id "/email"))
-                           (assoc :headers auth-cookie)))))))))
+             (-> (test-utils/get-uri-json :get
+                                          (str "/user/" second-user-id "/email")
+                                          {:headers auth-cookie})
+                 (get-in [:status])))))
+    (testing "A regular user does not have accounts associated with them")
+    ))
 
 (deftest managed-account-login
   (let [conn (db/conn)
@@ -77,13 +76,10 @@
                                       :full-name full-name})
         manager (users/get-user-by-email conn email)]
     (testing "Account manager logs in, but they are not yet an account manager"
-      (let [login-response (handler/handler
-                            (-> (mock/request
-                                 :post "/login"
-                                 (cheshire/generate-string
-                                  {:email email
-                                   :password password}))
-                                (mock/content-type "application/json")))]
+      (let [login-response (test-utils/get-uri-json :post "/login"
+                                                    {:json-body
+                                                     {:email email
+                                                      :password password}})]
         (is (not (cookies/get-cookie-account-manager? login-response)))))
     (testing "Account is created and account manager is an account manager"
       (let [;; register an account
@@ -92,11 +88,8 @@
             account (accounts/get-account-by-name "FooBar.com")
             ;; associate manager with account
             _ (accounts/associate-account-manager! (:id manager) (:id account))
-            login-response (handler/handler
-                            (-> (mock/request
-                                 :post "/login"
-                                 (cheshire/generate-string
-                                  {:email email
-                                   :password password}))
-                                (mock/content-type "application/json")))]
-        (is (cookies/get-cookie-account-manager? login-response))))))
+            ;; grab accounts user manages
+            ]
+        ))
+    (testing "Account manager manages multiple accounts")
+    ))

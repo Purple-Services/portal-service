@@ -52,9 +52,11 @@
 
 (defn on-error
   [request value]
-  {:status 403
-   :header {}
-   :body (str "you do not have permission to access " (:uri request))})
+  (-> (response
+       {:header {}
+        :body {:message (str "you do not have permission to access "
+                             (:uri request))}})
+      (assoc :status 403)))
 
 (def login-rules
   ;; all of these routes must always be allowed access
@@ -162,7 +164,10 @@
                  (orders/user-orders user-id)))
            (GET "/email" []
                 (response
-                 {:email (users/get-user-email (conn) user-id)})))
+                 {:email (users/get-user-email (conn) user-id)}))
+           (GET "/accounts" []
+                (response
+                 (users/user-accounts user-id))))
   (context "/account-manager/:manager-id" [manager-id]
            (GET "/user/:user-id" [user-id]
                 (response
