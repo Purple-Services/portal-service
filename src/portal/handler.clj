@@ -290,6 +290,9 @@
            (GET "/users" []
                 (response
                  (accounts/account-users account-id)))
+           (GET "/orders" []
+                (response
+                 (accounts/orders account-id)))
            (POST "/add-user" {body :body}
                  (response
                   (let [new-user (keywordize-keys body)]

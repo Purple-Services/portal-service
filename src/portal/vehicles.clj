@@ -1,13 +1,17 @@
 (ns portal.vehicles
   (:require [bouncer.core :as b]
             [bouncer.validators :as v]
+            [clojure.string :as s]
             [common.db :as db]
             [common.util :as util]
             [portal.db :refer [raw-sql-query]]))
 
 (def vehicle-cols
   [:id :user_id :year :make :model :color :gas_type :only_top_tier
-   :license_plate :active])
+   :license_plate :active :gas_type :timestamp_created])
+
+(def vehicle-cols-select
+  (s/join "," (map #(str "vehicles." (name %)) vehicle-cols)))
 
 (defn vehicle-description
   "Given a vehicle return a str describing that vehicle as
@@ -45,12 +49,6 @@
                   [(manager-can-view-vehicle-sql user-id vehicle-id)])]
     (not (empty? vehicles))))
 
-
-(def vehicles-select
-  (str "vehicles.id, vehicles.active, vehicles.user_id, vehicles.year, "
-       "vehicles.make, vehicles.model, vehicles.color, vehicles.gas_type, "
-       "vehicles.only_top_tier, vehicles.license_plate, "
-       "vehicles.timestamp_created"))
 
 (defn process-vehicle
   "Process a vehicle to included as a JSON response"

@@ -4,7 +4,8 @@
             [common.util :as util]
             [portal.accounts :as accounts]
             [portal.functional.test.cookies :as cookies]
-            [portal.functional.test.vehicles :as test-vehicles ]
+            [portal.functional.test.vehicles :as test-vehicles]
+            [portal.functional.test.orders :as test-orders]
             [portal.test.db-tools :refer
              [setup-ebdb-test-pool!
               setup-ebdb-test-for-conn-fixture
@@ -43,6 +44,10 @@
   [user-id]
   (str "/user/" user-id "/vehicles"))
 
+(defn user-orders-uri
+  [user-id]
+  (str "/user/" user-id "/orders"))
+
 (defn user-add-vehicle-uri
   [user-id]
   (str "/user/" user-id "/add-vehicle"))
@@ -59,6 +64,10 @@
 (defn manager-vehicles-uri
   [account-id manager-id]
   (str (account-manager-context-uri account-id manager-id) "/vehicles"))
+
+(defn manager-orders-uri
+  [account-id manager-id]
+  (str (account-manager-context-uri account-id manager-id) "/orders"))
 
 (deftest account-managers-security
   (with-redefs [common.sendgrid/send-template-email
@@ -206,6 +215,8 @@
               _ (test-vehicles/create-vehicle! conn
                                                (test-vehicles/vehicle-map {})
                                                {:id manager-user-id})
+              manager-vehicle (vehicles/user-vehicles manager-user-id)
+              manager-vehicle-id (:id (first manager-vehicle))
               _ (test-vehicles/create-vehicle! conn
                                                (test-vehicles/vehicle-map
                                                 {:color "red"
@@ -329,134 +340,160 @@
                          manager-user-id
                          user-vehicle-id)
                         {:headers manager-auth-cookie})
-                       (get-in [:status])))))
-          (testing "Adding vehicles test"
-            ;; a regular user can add a vehicle
-            (is (-> (test-utils/get-uri-json
-                     :post
-                     (user-add-vehicle-uri
-                      user-id)
-                     {:json-body
-                      (dissoc
-                       (test-vehicles/vehicle-map
-                        {:make "BMW"
-                         :model "i8"
-                         :color "Red"
-                         :user_id user-id})
-                       :id)
-                      :headers user-auth-cookie})
-                    (get-in [:body :success])))
-            ;; a regular user can't add a vehicle to
-            ;; another user-id
-            (is (= 403
-                   (-> (test-utils/get-uri-json
-                        :post
-                        (user-add-vehicle-uri
-                         user-id)
-                        {:json-body
-                         (dissoc
-                          (test-vehicles/vehicle-map
-                           {:make "BMW"
-                            :model "i8"
-                            :color "Red"
-                            :user_id child-user-id})
-                          :id)
-                         :headers user-auth-cookie})
                        (get-in [:status]))))
-            ;; a regular user can't add a vehicle to
-            ;; an account
-            (is (= 403
-                   (-> (test-utils/get-uri-json
-                        :post
-                        (manager-add-vehicle-uri
-                         account-id
-                         user-id)
-                        {:json-body
-                         (dissoc
-                          (test-vehicles/vehicle-map
-                           {:make "BMW"
-                            :model "i8"
-                            :color "Red"
-                            :user_id user-id})
-                          :id)
-                         :headers user-auth-cookie})
-                       (get-in [:status]))))
-            ;; a manager can add a vehicle to an account
-            ;; with their own user-id
-            (is (-> (test-utils/get-uri-json
-                     :post
-                     (manager-add-vehicle-uri
-                      account-id
-                      manager-user-id)
-                     {:json-body
-                      (dissoc
-                       (test-vehicles/vehicle-map
-                        {:make "Honda"
-                         :model "Civic"
-                         :color "Red"
-                         :user_id manager-user-id})
-                       :id)
-                      :headers manager-auth-cookie})
-                    (get-in [:body :success])))
-            ;; a manager can add a vehicle to an account
-            ;; with a child-user-id
-            (is (-> (test-utils/get-uri-json
-                     :post
-                     (manager-add-vehicle-uri
-                      account-id
-                      manager-user-id)
-                     {:json-body
-                      (dissoc
-                       (test-vehicles/vehicle-map
-                        {:make "Ford"
-                         :model "F150"
-                         :color "White"
-                         :user_id child-user-id})
-                       :id)
-                      :headers manager-auth-cookie})
-                    (get-in [:body :success])))
-            ;; a manager can't add a vehicle to an account
-            ;; for a regular user
-            (is (= 403
-                   (-> (test-utils/get-uri-json
-                        :post
-                        (manager-add-vehicle-uri
-                         account-id
-                         manager-user-id)
-                        {:json-body
-                         (dissoc
-                          (test-vehicles/vehicle-map
-                           {:make "BMW"
-                            :model "i8"
-                            :color "Red"
-                            :user_id user-id})
-                          :id)
-                         :headers manager-auth-cookie})
-                       (get-in [:status]))))
-            ;; a child user can't add a vehicle to the account
-            (is (= 403
-                   (-> (test-utils/get-uri-json
-                        :post
-                        (manager-add-vehicle-uri
-                         account-id
-                         child-user-id)
-                        {:json-body
-                         (dissoc
-                          (test-vehicles/vehicle-map
-                           {:make "Honda"
-                            :model "CRV"
-                            :color "Beige"
-                            :user_id child-vehicle-id})
-                          :id)
-                         :headers child-auth-cookie})
-                       (get-in [:status])))))))
-      (testing "Account managers can see all orders"
-        ;; add orders for manager and child account
-        )
-      (testing "Users can see their own orders"
-        )
-      (testing "... but users can't see orders of other accounts")
-      )))
+            (testing "Adding vehicles test"
+              ;; a regular user can add a vehicle
+              (is (-> (test-utils/get-uri-json
+                       :post
+                       (user-add-vehicle-uri
+                        user-id)
+                       {:json-body
+                        (dissoc
+                         (test-vehicles/vehicle-map
+                          {:make "BMW"
+                           :model "i8"
+                           :color "Red"
+                           :user_id user-id})
+                         :id)
+                        :headers user-auth-cookie})
+                      (get-in [:body :success])))
+              ;; a regular user can't add a vehicle to
+              ;; another user-id
+              (is (= 403
+                     (-> (test-utils/get-uri-json
+                          :post
+                          (user-add-vehicle-uri
+                           user-id)
+                          {:json-body
+                           (dissoc
+                            (test-vehicles/vehicle-map
+                             {:make "BMW"
+                              :model "i8"
+                              :color "Red"
+                              :user_id child-user-id})
+                            :id)
+                           :headers user-auth-cookie})
+                         (get-in [:status]))))
+              ;; a regular user can't add a vehicle to
+              ;; an account
+              (is (= 403
+                     (-> (test-utils/get-uri-json
+                          :post
+                          (manager-add-vehicle-uri
+                           account-id
+                           user-id)
+                          {:json-body
+                           (dissoc
+                            (test-vehicles/vehicle-map
+                             {:make "BMW"
+                              :model "i8"
+                              :color "Red"
+                              :user_id user-id})
+                            :id)
+                           :headers user-auth-cookie})
+                         (get-in [:status]))))
+              ;; a manager can add a vehicle to an account
+              ;; with their own user-id
+              (is (-> (test-utils/get-uri-json
+                       :post
+                       (manager-add-vehicle-uri
+                        account-id
+                        manager-user-id)
+                       {:json-body
+                        (dissoc
+                         (test-vehicles/vehicle-map
+                          {:make "Honda"
+                           :model "Civic"
+                           :color "Red"
+                           :user_id manager-user-id})
+                         :id)
+                        :headers manager-auth-cookie})
+                      (get-in [:body :success])))
+              ;; a manager can add a vehicle to an account
+              ;; with a child-user-id
+              (is (-> (test-utils/get-uri-json
+                       :post
+                       (manager-add-vehicle-uri
+                        account-id
+                        manager-user-id)
+                       {:json-body
+                        (dissoc
+                         (test-vehicles/vehicle-map
+                          {:make "Ford"
+                           :model "F150"
+                           :color "White"
+                           :user_id child-user-id})
+                         :id)
+                        :headers manager-auth-cookie})
+                      (get-in [:body :success])))
+              ;; a manager can't add a vehicle to an account
+              ;; for a regular user
+              (is (= 403
+                     (-> (test-utils/get-uri-json
+                          :post
+                          (manager-add-vehicle-uri
+                           account-id
+                           manager-user-id)
+                          {:json-body
+                           (dissoc
+                            (test-vehicles/vehicle-map
+                             {:make "BMW"
+                              :model "i8"
+                              :color "Red"
+                              :user_id user-id})
+                            :id)
+                           :headers manager-auth-cookie})
+                         (get-in [:status]))))
+              ;; a child user can't add a vehicle to the account
+              (is (= 403
+                     (-> (test-utils/get-uri-json
+                          :post
+                          (manager-add-vehicle-uri
+                           account-id
+                           child-user-id)
+                          {:json-body
+                           (dissoc
+                            (test-vehicles/vehicle-map
+                             {:make "Honda"
+                              :model "CRV"
+                              :color "Beige"
+                              :user_id child-vehicle-id})
+                            :id)
+                           :headers child-auth-cookie})
+                         (get-in [:status]))))))
+          (let [child-order-1 (test-orders/order-map {:user_id child-user-id
+                                                      :vehicle_id child-vehicle-id})
+                _ (test-orders/create-order! conn child-order-1)
+                child-order-2 (test-orders/order-map {:user_id child-user-id
+                                                      :vehicle_id child-vehicle-id})
+                _ (test-orders/create-order! conn child-order-2)
+                manager-order-1 (test-orders/order-map
+                                 {:user_id manager-user-id
+                                  :vehicle_id manager-vehicle-id})
+                _ (test-orders/create-order! conn manager-order-1)
+                manager-order-2 (test-orders/order-map
+                                 {:user_id manager-user-id
+                                  :vehicle_id manager-vehicle-id})
+                _ (test-orders/create-order! conn manager-order-2)
+                user-order-1 (test-orders/order-map {:user_id user-id
+                                                     :vehicle_id user-vehicle-id})
+                _ (test-orders/create-order! conn user-order-1)
+                user-order-2 (test-orders/order-map {:user_id user-id
+                                                     :vehicle_id user-vehicle-id})
+                _ (test-orders/create-order! conn user-order-2)]
+            (testing "Account managers can see all orders"
+              (is (= 4
+                     (-> (test-utils/get-uri-json :get (manager-orders-uri
+                                                        account-id
+                                                        manager-user-id)
+                                                  {:headers manager-auth-cookie})
+                         (get-in [:body])
+                         (count)))))
+            (testing "Regular users can see their own orders"
+              )
+            (testing "Child users can see their own orders")
+            (testing ".. but child users can't see the account orders")
+            (testing "Regular users can't see orders of other accounts")))))))
 
 
 (deftest selenium-acccount-user
