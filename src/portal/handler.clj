@@ -51,6 +51,19 @@
         vehicle-id (nth reg-match 2)]
     (vehicles/user-can-view-vehicle? user-id vehicle-id)))
 
+(defn vehicle-user-id-valid-for-user?
+  "Given a route of /user/<user-id>/vehicle/<vehicle-id>, check that the user
+  can add the vehicle with that user-id"
+  [request]
+  (let [uri (:uri request)
+        body (:body request)
+        json-body (keywordize-keys body)
+        vehicle-user-id (:user_id json-body)
+        reg-match (re-matches #"/user/([a-zA-Z0-9]{20})/add-vehicle"
+                              uri)
+        user-id (second reg-match)]
+    (boolean (= user-id vehicle-user-id))))
+
 (defn manager-id-matches-cookies?
   "Given a route of /account/<account-id>/manager/<manager-id>, check that the
   <manager-id> matches the token and user-id of the cookies"
@@ -86,6 +99,22 @@
         manager-id (nth reg-match 2)
         vehicle-id (nth reg-match 3)]
     (vehicles/manager-can-view-vehicle? manager-id vehicle-id)))
+
+(defn vehicle-user-id-valid-for-manager?
+  "Given a route of
+  /account/<account-id>/manager/<manager-id>/add-vehicle, check
+  that the manager can add the vehicle with user-id"
+  [request]
+  (let [uri (:uri request)
+        body (:body request)
+        json-body (keywordize-keys body)
+        vehicle-user-id (:user_id json-body)
+        reg-match (re-matches
+                   #"/account/([a-zA-Z0-9]{20})/manager/([a-zA-Z0-9]{20})/add-vehicle"
+                   uri)
+        account-id (second reg-match)
+        manager-id (nth reg-match 2)]
+    (accounts/account-can-view-user? account-id vehicle-user-id)))
 
 (defn user-is-viewable-by-manager?
   "Given a route of
@@ -131,6 +160,12 @@
     :handler (constantly true)}
    {:pattern #"/forgot-password"
     :handler (constantly true)}
+   {:pattern #"/user/.*/add-vehicle"
+    :handler #(every? true?
+                      ((juxt user-id-matches-cookies?
+                             valid-session-wrapper?
+                             vehicle-user-id-valid-for-user?) %))
+    :on-error on-error}
    {:pattern #"/user/.*/vehicle/.*"
     :handler #(every? true?
                       ((juxt user-id-matches-cookies?
@@ -141,6 +176,13 @@
     :handler #(every? true?
                       ((juxt user-id-matches-cookies?
                              valid-session-wrapper?) %))
+    :on-error on-error}
+   {:pattern #"/account/.*/manager/.*/add-vehicle"
+    :handler #(every? true?
+                      ((juxt manager-id-matches-cookies?
+                             valid-session-wrapper?
+                             vehicle-user-id-valid-for-manager?
+                             manager-id-manages-account?) %))
     :on-error on-error}
    {:pattern #"/account/.*/manager/.*/vehicle/.*"
     :handler #(every? true?
@@ -252,6 +294,10 @@
                  (response
                   (let [new-user (keywordize-keys body)]
                     (accounts/create-child-account! account-id new-user))))
+           (POST "/add-vehicle" {body :body}
+                 (response
+                  (let [new-vehicle (keywordize-keys body)]
+                    (vehicles/create-vehicle! new-vehicle))))
            (GET "/vehicles" []
                 (response
                  (accounts/account-vehicles account-id)))
