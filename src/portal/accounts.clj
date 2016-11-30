@@ -6,6 +6,7 @@
             [common.util :as util]
             [common.sendgrid :as sendgrid]
             [portal.db :refer [raw-sql-query]]
+            [portal.orders :as orders]
             [portal.users :as users]
             [portal.vehicles :as vehicles]))
 
@@ -118,7 +119,7 @@
 
 (defn account-vehicles-sql
   [account-id]
-  (str "SELECT " vehicles/vehicles-select " FROM `vehicles` "
+  (str "SELECT " vehicles/vehicle-cols-select " FROM `vehicles` "
        "LEFT JOIN account_children ON "
        "account_children.user_id = vehicles.user_id "
        "LEFT JOIN account_managers ON "
@@ -133,3 +134,22 @@
                           (db/conn)
                           [(account-vehicles-sql account-id)])]
     (map #(vehicles/process-vehicle %) account-vehicles)))
+
+(defn account-orders-sql
+  [account-id]
+  (str "SELECT " orders/order-cols-select " FROM `orders` "
+       "LEFT JOIN account_children ON "
+       "account_children.user_id = orders.user_id "
+       "LEFT JOIN account_managers ON "
+       "account_managers.user_id = orders.user_id "
+       "WHERE account_managers.account_id = '" account-id "' "
+       "OR account_children.account_id = '" account-id "';"))
+
+(defn orders
+  "Given an account-id, return all orders associated with this account"
+  [account-id]
+  (let [account-orders (raw-sql-query
+                        (db/conn)
+                        [(account-orders-sql account-id)])
+        vehicles (account-vehicles account-id)]
+    (map (partial orders/process-order vehicles) account-orders)))
