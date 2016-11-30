@@ -42,6 +42,12 @@
     (->> (concat account-children account-managers)
          (map #(users/process-user %)))))
 
+(defn account-can-view-user?
+  [account-id user-id]
+  (let [users (account-users account-id)]
+    (boolean (not (empty?
+                   (filter #(= user-id (:id %)) users))))))
+
 (defn get-account-by-name
   "Given an account name, return the id associated with that account"
   [account-name]
