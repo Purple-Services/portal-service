@@ -31,7 +31,7 @@
     (valid-session? (conn) user-id token)))
 
 (defn user-id-matches-cookies?
-  "Given a route or /user/<id>, check that the <id> matches the token
+  "Given a route of /user/<id>, check that the <id> matches the token
   and user-id of the cookies"
   [request]
   (let [cookies (keywordize-keys (:cookies request))
@@ -39,6 +39,17 @@
         uri (:uri request)
         request-user-id (second (re-matches #"/user/([a-zA-Z0-9]{20})/.*" uri))]
     (boolean (= cookie-user-id request-user-id))))
+
+(defn vehicle-is-viewable-by-user?
+  "Given a route of /user/<user-id>/vehicle/<vehicle-id>, check that the user
+  can view the vehicle"
+  [request]
+  (let [uri (:uri request)
+        reg-match (re-matches #"/user/([a-zA-Z0-9]{20})/vehicle/([a-zA-Z0-9]{20})"
+                              uri)
+        user-id (second reg-match)
+        vehicle-id (nth reg-match 2)]
+    (vehicles/user-can-view-vehicle? user-id vehicle-id)))
 
 (defn manager-id-matches-cookies?
   "Given a route of /account/<account-id>/manager/<manager-id>, check that the
@@ -61,6 +72,34 @@
         account-id (second reg-match)
         manager-id (nth reg-match 2)]
     (users/manages-account? manager-id account-id)))
+
+(defn vehicle-is-viewable-by-manager?
+  "Given a route of
+  /account/<account-id>/manager/<manager-id>/vehicle/<vehicle-id>, check
+  that the manager can view vehicle"
+  [request]
+  (let [uri (:uri request)
+        reg-match (re-matches
+                   #"/account/([a-zA-Z0-9]{20})/manager/([a-zA-Z0-9]{20})/vehicle/([a-zA-Z0-9]{20})"
+                   uri)
+        account-id (second reg-match)
+        manager-id (nth reg-match 2)
+        vehicle-id (nth reg-match 3)]
+    (vehicles/manager-can-view-vehicle? manager-id vehicle-id)))
+
+(defn user-is-viewable-by-manager?
+  "Given a route of
+  /account/<account-id>/manager/<manager-id>/user/<user-id>, check
+  that the manager can view the user"
+  [request]
+  (let [uri (:uri request)
+        reg-match (re-matches
+                   #"/account/([a-zA-Z0-9]{20})/manager/([a-zA-Z0-9]{20})/user/([a-zA-Z0-9]{20})"
+                   uri)
+        account-id (second reg-match)
+        manager-id (nth reg-match 2)
+        user-id (nth reg-match 3)]
+    (accounts/account-can-view-user? account-id user-id)))
 
 (defn on-error
   [request value]
@@ -92,10 +131,30 @@
     :handler (constantly true)}
    {:pattern #"/forgot-password"
     :handler (constantly true)}
+   {:pattern #"/user/.*/vehicle/.*"
+    :handler #(every? true?
+                      ((juxt user-id-matches-cookies?
+                             valid-session-wrapper?
+                             vehicle-is-viewable-by-user?) %))
+    :on-error on-error}
    {:pattern #"/user/.*/.*"
     :handler #(every? true?
                       ((juxt user-id-matches-cookies?
                              valid-session-wrapper?) %))
+    :on-error on-error}
+   {:pattern #"/account/.*/manager/.*/vehicle/.*"
+    :handler #(every? true?
+                      ((juxt manager-id-matches-cookies?
+                             valid-session-wrapper?
+                             vehicle-is-viewable-by-manager?
+                             manager-id-manages-account?) %))
+    :on-error on-error}
+   {:pattern #"/account/.*/manager/.*/user/.*"
+    :handler #(every? true?
+                      ((juxt manager-id-matches-cookies?
+                             valid-session-wrapper?
+                             user-is-viewable-by-manager?
+                             manager-id-manages-account?) %))
     :on-error on-error}
    {:pattern #"/account/.*/manager/.*"
     :handler #(every? true?
@@ -182,6 +241,7 @@
                 (response
                  (users/user-accounts user-id))))
   (context "/account/:account-id/manager/:manager-id" [account-id manager-id]
+           ;; account manager can essentially see ALL users... NONO!
            (GET "/user/:user-id" [user-id]
                 (response
                  (users/get-user user-id)))
@@ -194,7 +254,11 @@
                     (accounts/create-child-account! account-id new-user))))
            (GET "/vehicles" []
                 (response
-                 (accounts/account-vehicles account-id))))
+                 (accounts/account-vehicles account-id)))
+           ;; account manager can essentially see AL vehicles... NONO!
+           (GET "/vehicle/:vehicle-id" [vehicle-id]
+                (response
+                 (vehicles/get-vehicle vehicle-id))))
   ;; for aws webservices
   (GET "/ok" [] (response {:success true}))
   ;; resources

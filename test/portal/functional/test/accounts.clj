@@ -35,6 +35,27 @@
   [account-id manager-id user-id]
   (str (account-manager-context-uri account-id manager-id) "/user/" user-id))
 
+(defn user-vehicle-uri
+  [user-id vehicle-id]
+  (str "/user/" user-id "/vehicle/" vehicle-id))
+
+(defn user-vehicles-uri
+  [user-id]
+  (str "/user/" user-id "/vehicles"))
+
+(defn user-add-vehicle-uri
+  [user-id]
+  (str "/user/" user-id "/add-vehicle"))
+
+(defn manager-vehicle-uri
+  [account-id manager-id vehicle-id]
+  (str (account-manager-context-uri account-id manager-id) "/vehicle/"
+       vehicle-id))
+
+(defn manager-add-vehicle-uri
+  [account-id manager-id]
+  (str (account-manager-context-uri account-id manager-id) "/add-vehicle"))
+
 (defn manager-vehicles-uri
   [account-id manager-id]
   (str (account-manager-context-uri account-id manager-id) "/vehicles"))
@@ -93,17 +114,22 @@
           another-account (accounts/get-account-by-name "BaxQux.com")
           second-child-email "baz@bar.com"
           second-child-full-name "Baz Bar"
-          ;; second user
-          ;; second-email "baz@qux.com"
-          ;; second-password "bazqux"
-          ;; second-full-name "Baz Qux"
-          ;; _ (login-test/register-user! {:db-conn conn
-          ;;                               :platform-id second-email
-          ;;                               :password second-password
-          ;;                               :full-name second-full-name})
-          ;; second-user (login/get-user-by-email conn second-email)
-          ;; second-user-id (:id second-user)
-          ]
+          ;; A regular user
+          user-email "baz@qux.com"
+          user-password "bazqux"
+          user-full-name "Baz Qux"
+          _ (login-test/register-user! {:db-conn conn
+                                        :platform-id user-email
+                                        :password user-password
+                                        :full-name user-full-name})
+          user (login/get-user-by-email conn user-email)
+          user-id (:id user)
+          user-login-response (test-utils/get-uri-json
+                               :post "/login"
+                               {:json-body
+                                {:email user-email
+                                 :password user-password}})
+          user-auth-cookie (cookies/auth-cookie user-login-response)]
       (testing "Only account managers can add users"
         ;; child user can't add a user
         (is (= 403
@@ -114,6 +140,16 @@
                                              {:email second-child-email
                                               :full-name second-child-full-name}
                                              :headers child-auth-cookie})
+                   (get-in [:status]))))
+        ;; a regular user can't add a user to another account
+        (is (= 403
+               (-> (test-utils/get-uri-json :post (add-user-uri
+                                                   account-id
+                                                   user-id)
+                                            {:json-body
+                                             {:email second-child-email
+                                              :full-name second-child-full-name}
+                                             :headers user-auth-cookie})
                    (get-in [:status]))))
         ;; account manager can
         (is (-> (test-utils/get-uri-json :post (add-user-uri
@@ -150,95 +186,178 @@
                                                     manager-user-id)
                                               {:headers child-auth-cookie})
                      (get-in [:status]))))
-          ;; ...but the manager can see the account user
+          ;; ...but the manager can see the child account user
           (is (= child-user-id
                  (-> (test-utils/get-uri-json :get (manager-get-user-uri
                                                     account-id
                                                     manager-user-id
                                                     child-user-id)
                                               {:headers manager-auth-cookie})
-                     (get-in [:body :id])))))
-        (testing "Only account managers can see all vehicles"
-          ;; add some vehicles to manager account and child account
-          (test-vehicles/create-vehicle! conn
-                                         (test-vehicles/vehicle-map {})
-                                         {:id manager-user-id})
-          (test-vehicles/create-vehicle! conn
-                                         (test-vehicles/vehicle-map
-                                          {:color "red"
-                                           :year "2006"})
-                                         {:id manager-user-id})
-          (test-vehicles/create-vehicle! conn
-                                         (test-vehicles/vehicle-map
-                                          {:make "Honda"
-                                           :model "Accord"
-                                           :color "Silver"})
-                                         {:id child-user-id})
-          (test-vehicles/create-vehicle! conn
-                                         (test-vehicles/vehicle-map
-                                          {:make "Hyundai"
-                                           :model "Sonota"
-                                           :color "Orange"})
-                                         {:id (:id
-                                               (login/get-user-by-email
-                                                conn
-                                                second-child-email))})
-          ;; manager sees all vehicles
-          (is (= 4
-                 (-> (test-utils/get-uri-json :get (manager-vehicles-uri
+                     (get-in [:body :id]))))
+          ;; manager can't see a user not associated with their account
+          (is (= 403
+                 (-> (test-utils/get-uri-json :get (manager-get-user-uri
                                                     account-id
-                                                    manager-user-id)
+                                                    manager-user-id
+                                                    user-id)
                                               {:headers manager-auth-cookie})
-                     (get-in [:body])
-                     (count)))))
-        (testing "Child accounts can only see their own vehicles"
-          ;; (println (-> (get-uri-json :get (manager-vehicles-uri
-          ;;                                  child-user-id)
-          ;;                            {:headers child-auth-cookie})))
-          ;; ;; child can't get account-vehicles
-          ;; (is (not (-> (get-uri-json :get (manager-vehicles-uri
-          ;;                                  child-user-id)
-          ;;                            {:headers child-auth-cookie})
-          ;;              (get-in [:body :success]))))
-          ;; child can't see another user's vehicle
-          ;; child can't can't see another vehicle associated with account
-          )
-        (testing "Users can't see other user's vehicles"
-          ;; add a vehicle by another user, not associated with account
-          )
-        (testing "Account managers can see all orders"
-          ;; add orders for manager and child account
-          )
-        (testing "Users can see their own orders"
-          )
-        (testing "... but users can't see orders of other accounts")
-        (testing "Child accounts can't add vehicles")
-        (testing "A user can get their own vehicles"
-          #_ (let [_ (vehicles/create-vehicle! conn (test-vehicles/vehicle-map {})
+                     (get-in [:status])))))
+        (let [;; manager vehicles
+              _ (test-vehicles/create-vehicle! conn
+                                               (test-vehicles/vehicle-map {})
+                                               {:id manager-user-id})
+              _ (test-vehicles/create-vehicle! conn
+                                               (test-vehicles/vehicle-map
+                                                {:color "red"
+                                                 :year "2006"})
+                                               {:id manager-user-id})
+              ;; child vehicle
+              _ (test-vehicles/create-vehicle! conn
+                                               (test-vehicles/vehicle-map
+                                                {:make "Honda"
+                                                 :model "Accord"
+                                                 :color "Silver"})
+                                               {:id child-user-id})
+              child-vehicle (vehicles/user-vehicles child-user-id)
+              child-vehicle-id (:id (first child-vehicle))
+              ;; second child vehicle
+              second-child-user-id (:id
+                                    (login/get-user-by-email
+                                     conn
+                                     second-child-email))
+              _ (test-vehicles/create-vehicle! conn
+                                               (test-vehicles/vehicle-map
+                                                {:make "Hyundai"
+                                                 :model "Sonota"
+                                                 :color "Orange"})
+                                               {:id second-child-user-id})
+              second-child-vehicle (vehicles/user-vehicles second-child-user-id)
+              second-child-vehicle-id (:id (first second-child-vehicle))
+              ;; user-vehicle
+              _ (test-vehicles/create-vehicle! conn
+                                               (test-vehicles/vehicle-map
+                                                {:make "BMW"
+                                                 :model "i8"
+                                                 :color "Blue"})
                                                {:id user-id})
-                   vehicles-response (portal.handler/handler
-                                      (-> (mock/request
-                                           :get (str "/user/" user-id "/vehicles"))
-                                          (assoc :headers auth-cookie)))
-                   response-body-json (cheshire/parse-string
-                                       (:body vehicles-response) true)]
-               (is (= user-id
-                      (-> response-body-json
-                          first
-                          :user_id))))))
-      (testing "A user can not access other user's vehicles"
-        #_ (let [_ (create-vehicle! conn (vehicle-map {}) {:id second-user-id})
-                 vehicles-response (portal.handler/handler
-                                    (-> (mock/request
-                                         :get (str "/user/" second-user-id
-                                                   "/vehicles"))
-                                        (assoc :headers auth-cookie)))]
-             (is (= 403
-                    (:status vehicles-response))))))))
+              user-vehicle (vehicles/user-vehicles user-id)
+              user-vehicle-id (:id (first user-vehicle))]
+          (testing "Only account managers can see all vehicles"
+            ;; manager sees all vehicles
+            (is (= 4
+                   (-> (test-utils/get-uri-json :get (manager-vehicles-uri
+                                                      account-id
+                                                      manager-user-id)
+                                                {:headers manager-auth-cookie})
+                       (get-in [:body])
+                       (count))))
+            ;; child can not
+            (is (= 403
+                   (-> (test-utils/get-uri-json :get (manager-vehicles-uri
+                                                      account-id
+                                                      child-user-id)
+                                                {:headers child-auth-cookie})
+                       (get-in [:status])))))
+          (testing "Child accounts can only see their own vehicles"
+            ;; child account only sees their own vehicle
+            (is (= 1
+                   (-> (test-utils/get-uri-json :get (user-vehicles-uri
+                                                      child-user-id)
+                                                {:headers child-auth-cookie})
+                       (get-in [:body])
+                       (count))))
+            ;; child can't see account vehicles
+            (is (= 403
+                   (-> (test-utils/get-uri-json :get (manager-vehicles-uri
+                                                      account-id
+                                                      child-user-id)
+                                                {:headers child-auth-cookie})
+                       (get-in [:status]))))
+            ;; user can retrieve their own vehicle
+            (is (= user-vehicle-id
+                   (-> (test-utils/get-uri-json
+                        :get
+                        (user-vehicle-uri
+                         user-id
+                         user-vehicle-id)
+                        {:headers user-auth-cookie})
+                       (get-in [:body :id]))))
+            ;; manager can see another vehicle associated with account
+            (is (= child-vehicle-id)
+                (-> (test-utils/get-uri-json :get (manager-vehicle-uri
+                                                   account-id
+                                                   manager-user-id
+                                                   child-vehicle-id)
+                                             {:headers manager-auth-cookie})
+                    (get-in [:body :id]))))
+          (testing "Users can't see other user's vehicles"
+            ;; a child user can't view another child user's vehicles
+            (is (= 403
+                   (-> (test-utils/get-uri-json
+                        :get
+                        (user-vehicle-uri
+                         child-user-id
+                         second-child-vehicle-id)
+                        {:headers child-auth-cookie})
+                       (get-in [:status]))))
+            ;; child user can't view a regular user's vehicles
+            (is (= 403
+                   (-> (test-utils/get-uri-json
+                        :get
+                        (user-vehicle-uri
+                         child-user-id
+                         user-vehicle-id)
+                        {:headers child-auth-cookie})
+                       (get-in [:status]))))
+            ;; regular user not associated with account can't view another
+            ;; user's vehicle
+            (is (= 403
+                   (-> (test-utils/get-uri-json
+                        :get
+                        (user-vehicle-uri
+                         user-id
+                         child-vehicle-id)
+                        {:headers user-auth-cookie})
+                       (get-in [:status]))))
+            ;; account managers can't view vehicles that aren't associated
+            ;; with their account
+            (is (= 403
+                   (-> (test-utils/get-uri-json
+                        :get
+                        (manager-vehicle-uri
+                         account-id
+                         manager-user-id
+                         user-vehicle-id)
+                        {:headers manager-auth-cookie})
+                       (get-in [:status])))))
+          (testing "Adding vehicles test"
+            ;; a regular user can add a vehicle
+
+            ;; a regular user can't add a vehicle to
+            ;; an account
+
+            ;; a manager can add a vehicle to an account
+            ;; with their own user-id
+
+            ;; a manager can add a vehicle to an account
+            ;; with a child-user-id
+
+            ;; a manager can't add a vehicle to an account
+            ;; for user-id
+
+            ;; a child user can not add a vehicle to the account
+            )))
+      (testing "Account managers can see all orders"
+        ;; add orders for manager and child account
+        )
+      (testing "Users can see their own orders"
+        )
+      (testing "... but users can't see orders of other accounts")
+      )))
 
 
 (deftest selenium-acccount-user
-  ;; users not show for account-children
+  ;; users not shown for account-children
   ;; is shown for managers
   ;; users can be added
   ;; child account can login and change password
