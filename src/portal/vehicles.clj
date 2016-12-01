@@ -7,7 +7,7 @@
             [portal.db :refer [raw-sql-query]]))
 
 (def vehicle-cols
-  [:id :user_id :year :make :model :color :gas_type :only_top_tier
+  [:id :user_id :year :make :model :color :only_top_tier
    :license_plate :active :gas_type :timestamp_created])
 
 (def vehicle-cols-select

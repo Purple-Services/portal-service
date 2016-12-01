@@ -235,10 +235,7 @@
                               :http-only true
                               :max-age 7776000}
                      "user-id" {:value user-id
-                                :max-age 7776000}
-                     "account-manager" {:value
-                                        (users/is-account-manager? user-id)
-                                        :max-age 7776000}}})))
+                                :max-age 7776000}}})))
             (response login-result))))
   (GET "/logout" []
        (-> (redirect "/login")
