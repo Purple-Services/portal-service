@@ -233,7 +233,6 @@
                    {:cookies
                     {"token" {:value (:token login-result)
                               :http-only true
-                              :path config/base-url
                               :max-age 7776000}
                      "user-id" {:value user-id
                                 :max-age 7776000}
