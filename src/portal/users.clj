@@ -22,6 +22,11 @@
   [id]
   (boolean (db/!select (db/conn) "account_managers" [:id] {:user_id id})))
 
+(defn is-child-account?
+  "Given an id, determine if the user is a child account manager"
+  [id]
+  (boolean (db/!select (db/conn) "account_children" [:id] {:user_id id})))
+
 (defn manages-account?
   "Given an user-id and account-id, determine if they really do manage that
   account"

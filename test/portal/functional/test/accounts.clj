@@ -460,6 +460,23 @@
                               :user_id child-vehicle-id})
                             :id)
                            :headers child-auth-cookie})
+                         (get-in [:status]))))
+              ;; temporary, users should still be allowed to add vehicles
+              ;; a child user can't add a vehicle, period
+              (is (= 403
+                     (-> (test-utils/get-uri-json
+                          :post
+                          (user-add-vehicle-uri
+                           child-user-id)
+                          {:json-body
+                           (dissoc
+                            (test-vehicles/vehicle-map
+                             {:make "BMW"
+                              :model "i8"
+                              :color "Red"
+                              :user_id child-user-id})
+                            :id)
+                           :headers child-auth-cookie})
                          (get-in [:status]))))))
           (let [child-order-1 (test-orders/order-map {:user_id child-user-id
                                                       :vehicle_id child-vehicle-id})

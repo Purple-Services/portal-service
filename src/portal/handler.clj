@@ -51,6 +51,18 @@
         vehicle-id (nth reg-match 2)]
     (vehicles/user-can-view-vehicle? user-id vehicle-id)))
 
+;; this should be temporary... all users should be able to add
+;; vehicles
+(defn user-can-add-vehicle?
+  "Given a route of /user/<user-id>/vehicle/<vehicle-id>, check that the user
+  can add vehicles"
+  [request]
+  (let [uri (:uri request)
+        reg-match (re-matches #"/user/([a-zA-Z0-9]{20})/add-vehicle"
+                              uri)
+        user-id (second reg-match)]
+    (not (users/is-child-account? user-id))))
+
 (defn vehicle-user-id-valid-for-user?
   "Given a route of /user/<user-id>/vehicle/<vehicle-id>, check that the user
   can add the vehicle with that user-id"
@@ -63,6 +75,7 @@
                               uri)
         user-id (second reg-match)]
     (boolean (= user-id vehicle-user-id))))
+
 
 (defn manager-id-matches-cookies?
   "Given a route of /account/<account-id>/manager/<manager-id>, check that the
@@ -164,7 +177,8 @@
     :handler #(every? true?
                       ((juxt user-id-matches-cookies?
                              valid-session-wrapper?
-                             vehicle-user-id-valid-for-user?) %))
+                             vehicle-user-id-valid-for-user?
+                             user-can-add-vehicle?) %))
     :on-error on-error}
    {:pattern #"/user/.*/vehicle/.*"
     :handler #(every? true?
