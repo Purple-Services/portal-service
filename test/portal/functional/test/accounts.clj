@@ -480,7 +480,10 @@
                 _ (test-orders/create-order! conn user-order-1)
                 user-order-2 (test-orders/order-map {:user_id user-id
                                                      :vehicle_id user-vehicle-id})
-                _ (test-orders/create-order! conn user-order-2)]
+                _ (test-orders/create-order! conn user-order-2)
+                user-order-3 (test-orders/order-map {:user_id user-id
+                                                     :vehicle_id user-vehicle-id})
+                _ (test-orders/create-order! conn user-order-3)]
             (testing "Account managers can see all orders"
               (is (= 4
                      (-> (test-utils/get-uri-json :get (manager-orders-uri
@@ -490,10 +493,33 @@
                          (get-in [:body])
                          (count)))))
             (testing "Regular users can see their own orders"
-              )
-            (testing "Child users can see their own orders")
-            (testing ".. but child users can't see the account orders")
-            (testing "Regular users can't see orders of other accounts")))))))
+              (is (= 3
+                     (-> (test-utils/get-uri-json :get (user-orders-uri
+                                                        user-id)
+                                                  {:headers user-auth-cookie})
+                         (get-in [:body])
+                         (count)))))
+            (testing "Child users can see their own orders"
+              (is (= 2
+                     (-> (test-utils/get-uri-json :get (user-orders-uri
+                                                        child-user-id)
+                                                  {:headers child-auth-cookie})
+                         (get-in [:body])
+                         (count)))))
+            (testing ".. but child users can't see the account orders"
+              (is (= 403
+                     (-> (test-utils/get-uri-json :get (manager-orders-uri
+                                                        account-id
+                                                        child-user-id)
+                                                  {:headers child-auth-cookie})
+                         (get-in [:status])))))
+            (testing "Regular users can't see orders of other accounts"
+              (is (= 403
+                     (-> (test-utils/get-uri-json :get (manager-orders-uri
+                                                        account-id
+                                                        manager-user-id)
+                                                  {:headers user-auth-cookie})
+                         (get-in [:status])))))))))))
 
 
 (deftest selenium-acccount-user
