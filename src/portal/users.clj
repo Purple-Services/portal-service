@@ -55,8 +55,7 @@
                       [(str "SELECT id,name from accounts where `id` IN "
                             account-ids-strings-sql";")])]
         accounts)
-      {:success false
-       :message "There are no accounts associated with this user."})))
+      [])))
 
 (defn platform-id-available?
   [platform-id]

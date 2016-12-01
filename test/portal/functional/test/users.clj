@@ -63,11 +63,11 @@
                                           {:headers auth-cookie})
                  (get-in [:status])))))
     (testing "A regular user does not have accounts associated with them"
-      (is (= "There are no accounts associated with this user."
-             (-> (test-utils/get-uri-json :get
-                                          (str "/user/" user-id "/accounts")
-                                          {:headers auth-cookie})
-                 (get-in [:body :message])))))))
+      (is (empty?
+           (-> (test-utils/get-uri-json :get
+                                        (str "/user/" user-id "/accounts")
+                                        {:headers auth-cookie})
+               (get-in [:body])))))))
 
 (deftest managed-account-login
   (let [conn (db/conn)
@@ -87,11 +87,11 @@
         auth-cookie (cookies/auth-cookie login-response)
         user-id (cookies/get-cookie-user-id login-response)]
     (testing "Account manager logs in, but they are not yet an account manager"
-      (is (= "There are no accounts associated with this user."
-             (-> (test-utils/get-uri-json :get
-                                          (str "/user/" user-id "/accounts")
-                                          {:headers auth-cookie})
-                 (get-in [:body :message])))))
+      (is (empty?
+           (-> (test-utils/get-uri-json :get
+                                        (str "/user/" user-id "/accounts")
+                                        {:headers auth-cookie})
+               (get-in [:body])))))
     (testing "Account is created and account manager is an account manager"
       (let [;; register an account
             _ (accounts/create-account! "FooBar.com")
