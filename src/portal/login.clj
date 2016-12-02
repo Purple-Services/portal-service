@@ -73,6 +73,9 @@
     (cond (nil? user)
           {:success false
            :message "Incorrect email / password combination."}
+          (string/blank? (:password_hash user))
+          {:success false
+           :message "Please set your password before logging in "}
           (auth-native? user password)
           (do
             (clear-portal-sessions db-conn user session-expiration)
@@ -87,9 +90,9 @@
     (if user
       (let [reset-key (util/rand-str-alpha-num 22)]
         (db/!update db-conn
-                 "users"
-                 {:reset_key reset-key}
-                 {:id (:id user)})
+                    "users"
+                    {:reset_key reset-key}
+                    {:id (:id user)})
         (sendgrid/send-template-email
          email
          "Forgot Password?"
@@ -121,10 +124,10 @@
   (if-not (string/blank? reset-key) ;; <-- very important check, for security
     (if (valid-password? password)
       (db/!update db-conn
-               "users"
-               {:password_hash (bcrypt/encrypt password)
-                :reset_key ""}
-               {:reset_key reset-key})
+                  "users"
+                  {:password_hash (bcrypt/encrypt password)
+                   :reset_key ""}
+                  {:reset_key reset-key})
       {:success false
        :message "Password must be at least 6 characters."})
     {:success false

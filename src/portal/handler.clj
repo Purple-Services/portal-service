@@ -291,7 +291,10 @@
                  {:email (users/get-user-email (conn) user-id)}))
            (GET "/accounts" []
                 (response
-                 (users/user-accounts user-id))))
+                 (users/user-accounts user-id)))
+           (GET "/is-child-user" []
+                (response
+                 {:is-child-user? (users/is-child-account?  user-id)})))
   (context "/account/:account-id/manager/:manager-id" [account-id manager-id]
            ;; account manager can essentially see ALL users... NONO!
            (GET "/user/:user-id" [user-id]
