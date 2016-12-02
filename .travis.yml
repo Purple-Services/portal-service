@@ -4,7 +4,6 @@ sudo: required
 addons:
   apt:
     packages:
-      - mysql-server
       - chromium-chromedriver
       - chromium-browser
 before_install:
