@@ -25,12 +25,10 @@
 (use-fixtures :each clear-and-populate-test-database-fixture)
 
 (deftest users-email-address
-  (let [conn (db/conn)
-        email "foo@bar.com"
+  (let [email "foo@bar.com"
         password "foobar"
         full-name "Foo Bar"
-        _ (login-test/register-user! {:db-conn conn
-                                      :platform-id email
+        _ (login-test/register-user! {:platform-id email
                                       :password password
                                       :full-name full-name})
         login-response (test-utils/get-uri-json :post
@@ -44,11 +42,10 @@
         second-email "baz@qux.com"
         second-password "bazqux"
         second-full-name "Baz Qux"
-        _ (login-test/register-user! {:db-conn conn
-                                      :platform-id second-email
+        _ (login-test/register-user! {:platform-id second-email
                                       :password second-password
                                       :full-name second-full-name})
-        second-user (login/get-user-by-email conn second-email)
+        second-user (login/get-user-by-email second-email)
         second-user-id (:id second-user)]
     (testing "A user can retrieve their own email address"
       (is (= "foo@bar.com"
@@ -70,16 +67,14 @@
                (get-in [:body])))))))
 
 (deftest managed-account-login
-  (let [conn (db/conn)
-        email "manager@bar.com"
+  (let [email "manager@bar.com"
         password "manager"
         full-name "Manager"
         ;; register a user
-        _ (login-test/register-user! {:db-conn conn
-                                      :platform-id email
+        _ (login-test/register-user! {:platform-id email
                                       :password password
                                       :full-name full-name})
-        manager (users/get-user-by-email conn email)
+        manager (users/get-user-by-email email)
         login-response (test-utils/get-uri-json :post "/login"
                                                 {:json-body
                                                  {:email email

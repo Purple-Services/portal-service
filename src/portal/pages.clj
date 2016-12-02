@@ -1,5 +1,6 @@
 (ns portal.pages
   (:require [common.config :as config]
+            [common.db :as db]
             [compojure.route :as route]
             [net.cgrand.enlive-html :refer [after append html do-> unwrap
                                             content set-attr deftemplate]]
@@ -133,8 +134,8 @@
                    (html [:script "portal_cljs.core.reset_password();"])))
 
 (defn reset-password
-  [db-conn reset-key]
-  (let [user (login/get-user-by-reset-key db-conn reset-key)
+  [reset-key]
+  (let [user (login/get-user-by-reset-key reset-key)
         template-map {:base-url config/base-url
                       :email (:email user)
                       :reset-key reset-key}]

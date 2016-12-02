@@ -50,19 +50,17 @@
 
 (defn create-vehicle!
   "Add vehicle to user"
-  [db-conn vehicle user]
-  (db/!insert db-conn
+  [vehicle user]
+  (db/!insert (db/conn)
               "vehicles"
               (merge vehicle
                      {:user_id (:id user)})))
 
 (deftest vehicles
-  (let [conn (db/conn)
-        email "foo@bar.com"
+  (let [email "foo@bar.com"
         password "foobar"
         full-name "Foo Bar"
-        _ (register-user! {:db-conn conn
-                           :platform-id email
+        _ (register-user! {:platform-id email
                            :password password
                            :full-name full-name})
         login-response (portal.handler/handler
@@ -79,14 +77,13 @@
         second-email "baz@qux.com"
         second-password "bazqux"
         second-full-name "Baz Qux"
-        _ (register-user! {:db-conn conn
-                           :platform-id second-email
+        _ (register-user! {:platform-id second-email
                            :password second-password
                            :full-name second-full-name})
-        second-user (login/get-user-by-email conn second-email)
+        second-user (login/get-user-by-email second-email)
         second-user-id (:id second-user)]
     (testing "A user can get their own vehicles"
-      (let [_ (create-vehicle! conn (vehicle-map {}) {:id user-id})
+      (let [_ (create-vehicle! (vehicle-map {}) {:id user-id})
             vehicles-response (portal.handler/handler
                                (-> (mock/request
                                     :get (str "/user/" user-id "/vehicles"))
@@ -97,7 +94,7 @@
                    first
                    :user_id)))))
     (testing "A user can not access other user's vehicles"
-      (let [_ (create-vehicle! conn (vehicle-map {}) {:id second-user-id})
+      (let [_ (create-vehicle! (vehicle-map {}) {:id second-user-id})
             vehicles-response (portal.handler/handler
                                (-> (mock/request
                                     :get (str "/user/" second-user-id

@@ -16,8 +16,8 @@
 
 (defn register-user!
   "Create a user"
-  [{:keys [db-conn platform-id password full-name]}]
-  (is (:success (db/!insert db-conn "users"
+  [{:keys [platform-id password full-name]}]
+  (is (:success (db/!insert (db/conn) "users"
                             {:id (util/rand-str-alpha-num 20)
                              :email platform-id
                              :type "native"
@@ -36,12 +36,11 @@
               :full-name "Foo Bar"}
         conn (db/conn)]
     (testing "A user can be logged in"
-      (register-user! (merge user                       
-                             {:db-conn conn}))
+      (register-user! user)
       (is (:success
-           (login/login conn email password "127.0.0.1"))))
+           (login/login email password "127.0.0.1"))))
     (testing "When a user is logged in, expired sessions are erased"
-      (let [user (login/get-user-by-email conn email)
+      (let [user (login/get-user-by-email email)
             token (util/new-auth-token)
             past-date (c/to-sql-time (c/to-long (t/minus (l/local-now)
                                                          (t/days 91))))
@@ -51,7 +50,7 @@
                                            :source "portal"
                                            :timestamp_created past-date})]
         (is (:success
-             (login/login conn email password "127.0.0.1")))
+             (login/login email password "127.0.0.1")))
         ;; two sessions, because two logins have occured
         (is (= 2 (count (db/!select conn "sessions" ["*"]
                                     {:user_id (:id user)
@@ -63,24 +62,22 @@
         password "foobar"
         user {:platform-id email
               :password password
-              :full-name "Foo Bar"}
-        conn (db/conn)]
+              :full-name "Foo Bar"}]
     (testing "A user can be logged in"
-      (register-user! (merge user
-                             {:db-conn conn}))
+      (register-user! user)
       (is (:success
-           (login/login conn email password "127.0.0.1"))))
+           (login/login email password "127.0.0.1"))))
     (testing "User forgot password"
       (with-redefs [common.sendgrid/send-template-email
                     (fn [to subject message]
                       (println "No reset password email was actually sent"))]
-        (is (:success (login/forgot-password conn email)))))
-    (let [user (login/get-user-by-email conn email)
+        (is (:success (login/forgot-password email)))))
+    (let [user (login/get-user-by-email email)
           reset-key (:reset_key user)
           new-password "bazqux"]
       ;; password is changed
       (testing "User can reset password"
-        (is (:success (login/change-password conn reset-key new-password))))
+        (is (:success (login/change-password reset-key new-password))))
       (testing "User can login with new password"
         (is (:success
-             (login/login conn email new-password "127.0.0.1")))))))
+             (login/login email new-password "127.0.0.1")))))))

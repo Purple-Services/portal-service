@@ -97,17 +97,15 @@
 
 (defn create-order!
   "Given an order, create it in the database"
-  [db-conn order]
-  (is (:success (db/!insert db-conn "orders"
+  [order]
+  (is (:success (db/!insert (db/conn) "orders"
                             order))))
 
 (deftest orders
-  (let [conn (db/conn)
-        email "foo@bar.com"
+  (let [email "foo@bar.com"
         password "foobar"
         full-name "Foo Bar"
-        _ (login-test/register-user! {:db-conn conn
-                                      :platform-id email
+        _ (login-test/register-user! {:platform-id email
                                       :password password
                                       :full-name full-name})
         login-response (portal.handler/handler
@@ -124,21 +122,20 @@
         second-email "baz@qux.com"
         second-password "bazqux"
         second-full-name "Baz Qux"
-        _ (login-test/register-user! {:db-conn conn
-                                      :platform-id second-email
+        _ (login-test/register-user! {:platform-id second-email
                                       :password second-password
                                       :full-name second-full-name})
-        second-user (login/get-user-by-email conn second-email)
+        second-user (login/get-user-by-email second-email)
         second-user-id (:id second-user)]
     (testing "A user can get their own orders"
       (let [;; create a vehicle for user
             user-vehicle-map (vehicle-map {})
-            _ (create-vehicle! conn user-vehicle-map {:id user-id})
+            _ (create-vehicle! user-vehicle-map {:id user-id})
             user-vehicle (first (vehicles/user-vehicles user-id))
             ;; create an order
             user-order (order-map {:user_id user-id
                                    :vehicle_id (:id user-vehicle)})
-            _ (create-order! conn user-order)
+            _ (create-order! user-order)
             ;; response
             orders-response  (handler
                               (-> (mock/request
@@ -154,12 +151,12 @@
       (testing "A user can not access other user's orders"
         (let [;; create a vehicle for second-user
               user-vehicle-map (vehicle-map {})
-              _ (create-vehicle! conn user-vehicle-map {:id second-user-id})
+              _ (create-vehicle! user-vehicle-map {:id second-user-id})
               user-vehicle (first (vehicles/user-vehicles second-user-id))
               ;; create an order for second user
               user-order (order-map {:user_id second-user-id
                                      :vehicle_id (:id user-vehicle)})
-              _ (create-order! conn user-order)
+              _ (create-order! user-order)
               ;; response
               orders-response  (handler
                                 (-> (mock/request

@@ -36,14 +36,13 @@
         create-results))))
 
 (defn manually-create-manager-account!
-  [{:keys [db-conn email password full-name account-name]}]
-  (let [register-result (login-test/register-user! {:db-conn db-conn
-                                                    :platform-id email
+  [{:keys [email password full-name account-name]}]
+  (let [register-result (login-test/register-user! {:platform-id email
                                                     :password password
                                                     :full-name full-name})]
     (if register-result
       ;; manager was registered
-      (let [new-manager (users/get-user-by-email (db/conn) email)
+      (let [new-manager (users/get-user-by-email email)
             new-account-result (accounts/create-account! account-name)]
         (if (:success new-account-result)
           ;; new account was created
@@ -57,16 +56,14 @@
       register-result)))
 
 (deftest child-account-validations
-  (let [conn (db/conn)
-        email "manager@bar.com"
+  (let [email "manager@bar.com"
         password "manager"
         full-name "Manager"
         ;; register a user
-        _ (login-test/register-user! {:db-conn conn
-                                      :platform-id email
+        _ (login-test/register-user! {:platform-id email
                                       :password password
                                       :full-name full-name})
-        manager (users/get-user-by-email conn email)
+        manager (users/get-user-by-email email)
         ;; register an account
         _ (accounts/create-account! "FooBar.com")
         ;; retrieve the account
@@ -90,8 +87,7 @@
       (let [child-email "foo@bar.com"
             child-password "child"
             child-full-name "Foo Bar"
-            _ (login-test/register-user! {:db-conn conn
-                                          :platform-id child-email
+            _ (login-test/register-user! {:platform-id child-email
                                           :password child-password
                                           :full-name child-full-name})]
         (is (= '("Email address is already in use.")
@@ -102,16 +98,14 @@
                 [:email])))))))
 
 (deftest create-child-account-tests
-  (let [conn (db/conn)
-        email "manager@bar.com"
+  (let [email "manager@bar.com"
         password "manager"
         full-name "Manager"
         ;; register a manager
-        _ (login-test/register-user! {:db-conn conn
-                                      :platform-id email
+        _ (login-test/register-user! {:platform-id email
                                       :password password
                                       :full-name full-name})
-        manager (users/get-user-by-email conn email)
+        manager (users/get-user-by-email email)
         ;; register an account
         _ (accounts/create-account! "FooBar.com")
         ;; retrieve the account

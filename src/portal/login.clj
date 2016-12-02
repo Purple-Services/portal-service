@@ -19,24 +19,23 @@
 
 (defn get-user
   "Gets a user from db. Optionally add WHERE constraints."
-  [db-conn & {:keys [where]}]
-  (first (db/!select db-conn "users" ["*"] (merge {} where))))
+  [& {:keys [where]}]
+  (first (db/!select (db/conn) "users" ["*"] (merge {} where))))
 
 (defn get-user-by-email
   "Gets a user from db by email address"
-  [db-conn email]
-  (get-user db-conn
-            :where {:email email}))
+  [email]
+  (get-user :where {:email email}))
 
 (defn get-user-by-reset-key
   "Gets a user from db by reset_key (for password reset)."
-  [db-conn reset-key]
-  (get-user db-conn :where {:reset_key reset-key}))
+  [reset-key]
+  (get-user :where {:reset_key reset-key}))
 
 (defn init-session
-  [db-conn user client-ip]
+  [user client-ip]
   (let [token (util/new-auth-token)]
-    (db/!insert db-conn
+    (db/!insert (db/conn)
                 "sessions"
                 {:user_id (:id user)
                  :token token
@@ -49,8 +48,9 @@
 (defn clear-portal-sessions
   "Clear out all portal sessions that are older than date where date is the
   time in unix-epoch seconds"
-  [db-conn user date]
-  (let [user-sessions (db/!select db-conn "sessions" ["*"]
+  [user date]
+  (let [db-conn (db/conn)
+        user-sessions (db/!select db-conn "sessions" ["*"]
                                   {:user_id (:id user)
                                    :source "portal"})
         expired-sessions (filter #(< (-> % :timestamp_created .getTime) date)
@@ -60,14 +60,15 @@
                                          ","
                                          (map :id expired-sessions)) ")")]
     (when-not (empty? expired-sessions)
-      (sql/with-connection (db/conn) (sql/delete-rows
-                                      "sessions"
-                                      [expired-sessions-id-string])))))
+      (sql/with-connection db-conn (sql/delete-rows
+                                    "sessions"
+                                    [expired-sessions-id-string])))))
 
 (defn login
   "Given an email, password and client-ip, create a new session and return it"
-  [db-conn email password client-ip]
-  (let [user (get-user-by-email db-conn email)
+  [email password client-ip]
+  (let [db-conn (db/conn)
+        user (get-user-by-email email)
         session-expiration (c/to-long (t/minus (l/local-now)
                                                (t/days 90)))]
     (cond (nil? user)
@@ -78,18 +79,18 @@
            :message "Please set your password before logging in "}
           (auth-native? user password)
           (do
-            (clear-portal-sessions db-conn user session-expiration)
-            (init-session db-conn user client-ip))
+            (clear-portal-sessions user session-expiration)
+            (init-session user client-ip))
           :else {:success false
                  :message "Incorrect email / password combination."})))
 
 (defn forgot-password
   "Only for native accounts; platform-id is email address."
-  [db-conn email]
-  (let [user (get-user-by-email db-conn email)]
+  [email]
+  (let [user (get-user-by-email email)]
     (if user
       (let [reset-key (util/rand-str-alpha-num 22)]
-        (db/!update db-conn
+        (db/!update (db/conn)
                     "users"
                     {:reset_key reset-key}
                     {:id (:id user)})
@@ -120,10 +121,10 @@
 
 (defn change-password
   "Only for native accounts."
-  [db-conn reset-key password]
+  [reset-key password]
   (if-not (string/blank? reset-key) ;; <-- very important check, for security
     (if (valid-password? password)
-      (db/!update db-conn
+      (db/!update (db/conn)
                   "users"
                   {:password_hash (bcrypt/encrypt password)
                    :reset_key ""}

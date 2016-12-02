@@ -188,8 +188,7 @@
       (login-portal email password)
       (check-error-alert "Error: Incorrect email / password combination."))
     (testing "Create a user, login with credentials"
-      (register-user! {:db-conn (db/conn)
-                       :platform-id email
+      (register-user! {:platform-id email
                        :password password
                        :full-name full-name})
       (go-to-uri "login")
@@ -218,16 +217,14 @@
       (with-redefs [common.sendgrid/send-template-email
                     (fn [to subject message]
                       (println "No reset password email was actually sent"))]
-        (register-user! {:db-conn (db/conn)
-                         :platform-id email
+        (register-user! {:platform-id email
                          :password password
                          :full-name full-name})
         (go-to-uri "login")
         (input-text (find-element  login-email-input) email)
         (click (find-element forgot-password-link))
         (check-success-alert "An email has been sent to james@purpleapp.com. Please click the link included in that message to reset your password.")
-        (let [reset-key (:reset_key (login/get-user-by-email
-                                     (db/conn) email))
+        (let [reset-key (:reset_key (login/get-user-by-email email))
               reset-url (str "reset-password/" reset-key)
               password-xpath {:xpath "//input[@type='password' and @placeholder='password']"}
               confirm-password-xpath {:xpath "//input[@type='password' and @placeholder='confirm password']"}
@@ -276,16 +273,14 @@
               (is (exists? {:xpath "//a[text()='LOG OUT']"})))))))))
 
 (deftest account-manager-tests
-  (let [conn (db/conn)
-        email "manager@bar.com"
+  (let [email "manager@bar.com"
         password "manager"
         full-name "Manager"
         ;; register a user
-        _ (register-user! {:db-conn conn
-                           :platform-id email
+        _ (register-user! {:platform-id email
                            :password password
                            :full-name full-name})
-        manager (users/get-user-by-email conn email)]
+        manager (users/get-user-by-email email)]
     (testing "Account manager logs in, but they are not yet an account manager"
       (go-to-uri "login")
       (login-portal email password)

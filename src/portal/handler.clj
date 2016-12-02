@@ -237,7 +237,7 @@
                   headers :headers
                   remote-addr :remote-addr}
         (let [b (keywordize-keys body)
-              login-result (login/login (conn) (:email b) (:password b)
+              login-result (login/login (:email b) (:password b)
                                         (or (get headers "x-forwarded-for")
                                             remote-addr))]
           (if (:success login-result)
@@ -259,17 +259,16 @@
   (POST "/forgot-password" {body :body}
         (response
          (let [b (keywordize-keys body)]
-           (login/forgot-password (conn)
-                                  ;; 'platform_id' is email address
-                                  (:email b)))))
+           (login/forgot-password ;; 'platform_id' is email address
+            (:email b)))))
   (GET "/reset-password/:reset-key" [reset-key]
-       (-> (pages/reset-password (conn) reset-key)
+       (-> (pages/reset-password reset-key)
            response
            wrap-page))
   (POST "/reset-password" {body :body}
         (response
          (let [b (keywordize-keys body)]
-           (login/change-password (conn) (:reset-key b) (:password b)))))
+           (login/change-password (:reset-key b) (:password b)))))
   (context "/user/:user-id" [user-id]
            ;; this route is insecure! need to check if user really
            ;; can view this vehicle!
@@ -288,13 +287,13 @@
                  (orders/user-orders user-id)))
            (GET "/email" []
                 (response
-                 {:email (users/get-user-email (conn) user-id)}))
+                 {:email (users/get-user-email user-id)}))
            (GET "/accounts" []
                 (response
                  (users/user-accounts user-id)))
            (GET "/is-child-user" []
                 (response
-                 {:is-child-user? (users/is-child-account?  user-id)})))
+                 {:is-child-user? (users/is-child-account? user-id)})))
   (context "/account/:account-id/manager/:manager-id" [account-id manager-id]
            ;; account manager can essentially see ALL users... NONO!
            (GET "/user/:user-id" [user-id]

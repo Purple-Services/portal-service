@@ -74,16 +74,14 @@
                 (fn [to subject message
                      & {:keys [from template-id substitutions]}]
                   (println "No reset password email was actually sent"))]
-    (let [conn (db/conn)
-          manager-email "manager@bar.com"
+    (let [manager-email "manager@bar.com"
           manager-password "manager"
           manager-full-name "Manager"
           ;; register a manager
-          _ (login-test/register-user! {:db-conn conn
-                                        :platform-id manager-email
+          _ (login-test/register-user! {:platform-id manager-email
                                         :password manager-password
                                         :full-name manager-full-name})
-          manager (login/get-user-by-email conn manager-email)
+          manager (login/get-user-by-email manager-email)
           account-name "FooBar.com"
           ;; register an account
           _ (accounts/create-account! account-name)
@@ -102,11 +100,10 @@
           child-email "james@purpleapp.com"
           child-password "child"
           child-full-name "Foo Bar"
-          _ (login-test/register-user! {:db-conn conn
-                                        :platform-id child-email
+          _ (login-test/register-user! {:platform-id child-email
                                         :password child-password
                                         :full-name child-full-name})
-          child (login/get-user-by-email conn child-email)
+          child (login/get-user-by-email child-email)
           ;; associate child-account with account
           _ (accounts/associate-child-account! (:id child) (:id account))
           ;; generate auth-cokkie
@@ -127,11 +124,10 @@
           user-email "baz@qux.com"
           user-password "bazqux"
           user-full-name "Baz Qux"
-          _ (login-test/register-user! {:db-conn conn
-                                        :platform-id user-email
+          _ (login-test/register-user! {:platform-id user-email
                                         :password user-password
                                         :full-name user-full-name})
-          user (login/get-user-by-email conn user-email)
+          user (login/get-user-by-email user-email)
           user-id (:id user)
           user-login-response (test-utils/get-uri-json
                                :post "/login"
@@ -183,7 +179,6 @@
                                                     child-user-id
                                                     (:id
                                                      (login/get-user-by-email
-                                                      conn
                                                       second-child-email)))
                                               {:headers child-auth-cookie})
                      (get-in [:status]))))
@@ -212,19 +207,16 @@
                                               {:headers manager-auth-cookie})
                      (get-in [:status])))))
         (let [;; manager vehicles
-              _ (test-vehicles/create-vehicle! conn
-                                               (test-vehicles/vehicle-map {})
+              _ (test-vehicles/create-vehicle! (test-vehicles/vehicle-map {})
                                                {:id manager-user-id})
               manager-vehicle (vehicles/user-vehicles manager-user-id)
               manager-vehicle-id (:id (first manager-vehicle))
-              _ (test-vehicles/create-vehicle! conn
-                                               (test-vehicles/vehicle-map
+              _ (test-vehicles/create-vehicle! (test-vehicles/vehicle-map
                                                 {:color "red"
                                                  :year "2006"})
                                                {:id manager-user-id})
               ;; child vehicle
-              _ (test-vehicles/create-vehicle! conn
-                                               (test-vehicles/vehicle-map
+              _ (test-vehicles/create-vehicle! (test-vehicles/vehicle-map
                                                 {:make "Honda"
                                                  :model "Accord"
                                                  :color "Silver"})
@@ -234,10 +226,8 @@
               ;; second child vehicle
               second-child-user-id (:id
                                     (login/get-user-by-email
-                                     conn
                                      second-child-email))
-              _ (test-vehicles/create-vehicle! conn
-                                               (test-vehicles/vehicle-map
+              _ (test-vehicles/create-vehicle! (test-vehicles/vehicle-map
                                                 {:make "Hyundai"
                                                  :model "Sonota"
                                                  :color "Orange"})
@@ -245,8 +235,7 @@
               second-child-vehicle (vehicles/user-vehicles second-child-user-id)
               second-child-vehicle-id (:id (first second-child-vehicle))
               ;; user-vehicle
-              _ (test-vehicles/create-vehicle! conn
-                                               (test-vehicles/vehicle-map
+              _ (test-vehicles/create-vehicle! (test-vehicles/vehicle-map
                                                 {:make "BMW"
                                                  :model "i8"
                                                  :color "Blue"})
@@ -480,27 +469,27 @@
                          (get-in [:status]))))))
           (let [child-order-1 (test-orders/order-map {:user_id child-user-id
                                                       :vehicle_id child-vehicle-id})
-                _ (test-orders/create-order! conn child-order-1)
+                _ (test-orders/create-order! child-order-1)
                 child-order-2 (test-orders/order-map {:user_id child-user-id
                                                       :vehicle_id child-vehicle-id})
-                _ (test-orders/create-order! conn child-order-2)
+                _ (test-orders/create-order! child-order-2)
                 manager-order-1 (test-orders/order-map
                                  {:user_id manager-user-id
                                   :vehicle_id manager-vehicle-id})
-                _ (test-orders/create-order! conn manager-order-1)
+                _ (test-orders/create-order! manager-order-1)
                 manager-order-2 (test-orders/order-map
                                  {:user_id manager-user-id
                                   :vehicle_id manager-vehicle-id})
-                _ (test-orders/create-order! conn manager-order-2)
+                _ (test-orders/create-order! manager-order-2)
                 user-order-1 (test-orders/order-map {:user_id user-id
                                                      :vehicle_id user-vehicle-id})
-                _ (test-orders/create-order! conn user-order-1)
+                _ (test-orders/create-order! user-order-1)
                 user-order-2 (test-orders/order-map {:user_id user-id
                                                      :vehicle_id user-vehicle-id})
-                _ (test-orders/create-order! conn user-order-2)
+                _ (test-orders/create-order! user-order-2)
                 user-order-3 (test-orders/order-map {:user_id user-id
                                                      :vehicle_id user-vehicle-id})
-                _ (test-orders/create-order! conn user-order-3)]
+                _ (test-orders/create-order! user-order-3)]
             (testing "Account managers can see all orders"
               (is (= 4
                      (-> (test-utils/get-uri-json :get (manager-orders-uri
