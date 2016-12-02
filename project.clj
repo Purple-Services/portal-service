@@ -37,6 +37,7 @@
                                           :test-db-port "3306"
                                           :test-db-user "root"
                                           :test-db-password ""}
+                                    :jvm-opts ["-Dwebdriver.chrome.driver=/usr/lib/chromium-browser/chromedriver"]
                                     :plugins [[lein-environ "1.1.0"]]}
              :app-integration-dev-deploy
              {:aws {:access-key ~(System/getenv "AWS_ACCESS_KEY")
