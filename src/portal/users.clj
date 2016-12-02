@@ -9,13 +9,13 @@
 
 (defn get-user-email
   "Given a user-id retrun the users email."
-  [db-conn id]
-  (:email (first (db/!select db-conn "users" [:email] {:id id}))))
+  [id]
+  (:email (first (db/!select (db/conn) "users" [:email] {:id id}))))
 
 (defn get-user-by-email
   "Given an email address, return the user-id associated with that account"
-  [db-conn email]
-  (first (db/!select db-conn "users" [:id] {:email email})))
+  [email]
+  (first (db/!select (db/conn) "users" [:id] {:email email})))
 
 (defn is-account-manager?
   "Given an id, determine if the user is an account manager"
@@ -65,7 +65,7 @@
 
 (defn platform-id-available?
   [platform-id]
-  (not (boolean (get-user-by-email (db/conn) platform-id))))
+  (not (boolean (get-user-by-email platform-id))))
 
 (def child-account-validations
   {:email [[platform-id-available?
