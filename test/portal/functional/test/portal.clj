@@ -14,13 +14,13 @@
             [portal.test.login-test :refer [register-user!]]))
 
 ;; for manual testing:
-;; (setup-test-env!) ; make sure profiles.clj was loaded with
+;; (selenium/setup-test-env!) ; make sure profiles.clj was loaded with
 ;;                   ; :base-url "http:localhost:5744/"
 ;; -- run tests --
 ;; (reset-db!) ; note: most tests will need this run between them anyhow
 ;; -- run more tests
-;; (stop-server server)
-;; (stop-browser)
+;; (selenium/shutdown-test-env!
+
 
 ;; common elements
 (def logout-lg-xpath
@@ -208,6 +208,16 @@
       (is (exists? (find-element logout))))))
 
 (deftest selenium-regular-user
-  (testing "A normal user can add a vehicle")
-  ;; A normal user can add a vehicle
-  )
+  (let [email "foo@bar.com"
+        password "foobar"
+        full-name "Foo Bar"
+        ;; register a user
+        _ (register-user! {:platform-id email
+                           :password password
+                           :full-name full-name})
+        manager (users/get-user-by-email email)]
+    (testing "A normal user can login"
+      (go-to-uri "login")
+      (login-portal email password)
+      (wait-until #(exists? logout))
+      (is (exists? (find-element logout))))))
