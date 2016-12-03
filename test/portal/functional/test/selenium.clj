@@ -92,6 +92,11 @@
   (set-server!)
   (start-browser))
 
+(defn shutdown-test-env!
+  []
+  (stop-server server)
+  (stop-browser))
+
 (defn reset-db! []
   (clear-and-populate-test-database))
 
