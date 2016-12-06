@@ -29,12 +29,6 @@
 (def logout-sm-xpath
   {:xpath "//ul[contains(@class,'hidden-xs')]/li//a[text()='LOG OUT']"})
 
-(def logout {:xpath "//a[text()='LOG OUT']"})
-
-(def login-button {:xpath "//button[text()='LOGIN']"})
-
-(def login-email-input
-  {:xpath "//input[@type='text' and @placeholder='email']"})
 (def forgot-password-link {:xpath "//a[@class='forgot-password']"})
 
 (def vehicles-link {:xpath "//li/a/div[text()='VEHICLES']"})
@@ -100,7 +94,7 @@
   (select-checkbox vehicle-form-only-top-tier-gas? only-top-tier-gas?))
 
 (use-fixtures :once selenium/with-server selenium/with-browser
-  selenium/with-redefs-fixture)
+  selenium/with-redefs-fixture setup-ebdb-test-for-conn-fixture)
 (use-fixtures :each clear-and-populate-test-database-fixture)
 
 ;; this function is used to slow down clojure so the browser has time to catch
@@ -118,21 +112,6 @@
   "Navigate to the portal"
   []
   (to (str selenium/base-url "login")))
-
-(defn go-to-uri
-  "Given an uri, go to it"
-  [uri]
-  (to (str selenium/base-url uri)))
-
-(defn login-portal
-  "Login with the client using email and password as credentials"
-  [email password]
-  (go-to-uri "login")
-  (let [email-input    (find-element login-email-input)
-        password-input (find-element {:xpath "//input[@type='password']"})]
-    (input-text email-input email)
-    (input-text password-input password)
-    (click (find-element login-button))))
 
 (defn logout-portal
   "Logout, assuming the portal has already been logged into"
@@ -167,20 +146,20 @@
         logout {:xpath "//a[text()='LOG OUT']"}
         full-name "Foo Bar"]
     (testing "Login with a username and password that doesn't exist"
-      (go-to-uri "login")
-      (login-portal email password)
+      (selenium/go-to-uri "login")
+      (selenium/login-portal email password)
       (check-error-alert "Error: Incorrect email / password combination."))
     (testing "Create a user, login with credentials"
       (register-user! {:platform-id email
                        :password password
                        :full-name full-name})
-      (go-to-uri "login")
-      (login-portal email password)
+      (selenium/go-to-uri "login")
+      (selenium/login-portal email password)
       (wait-until #(exists? logout))
       (is (exists? (find-element logout))))
     (testing "Log back out."
       (logout-portal)
-      (is (exists? (find-element login-button))))))
+      (is (exists? (find-element selenium/login-button))))))
 
 (deftest forgot-password
   (let [email "james@purpleapp.com"
@@ -188,12 +167,12 @@
         full-name "James Borden"
         reset-button-xpath {:xpath "//button[text()='RESET PASSWORD']"}]
     (testing "User tries to reset key without reset key"
-      (go-to-uri "reset-password/vs5YI50YZptjyONSoIofm7")
+      (selenium/go-to-uri "reset-password/vs5YI50YZptjyONSoIofm7")
       (is (= (text (find-element {:xpath "//h1[text()='Page Not Found']"}))
              "Page Not Found")))
     (testing "User tries to reset password without having registed an account"
-      (go-to-uri "login")
-      (input-text (find-element login-email-input) email)
+      (selenium/go-to-uri "login")
+      (input-text (find-element selenium/login-email-input) email)
       (click (find-element forgot-password-link))
       (check-error-alert "Error: Sorry, we don't recognize that email address. Are you sure you didn't use Facebook or Google to log in?"))
     (testing "User resets password"
@@ -203,8 +182,8 @@
         (register-user! {:platform-id email
                          :password password
                          :full-name full-name})
-        (go-to-uri "login")
-        (input-text (find-element  login-email-input) email)
+        (selenium/go-to-uri "login")
+        (input-text (find-element  selenium/login-email-input) email)
         (click (find-element forgot-password-link))
         (check-success-alert "An email has been sent to james@purpleapp.com. Please click the link included in that message to reset your password.")
         (let [reset-key (:reset_key (login/get-user-by-email email))
@@ -214,7 +193,7 @@
               new-password "bazqux"
               wrong-confirm-password "quxxcorgi"
               too-short "foo"]
-          (go-to-uri reset-url)
+          (selenium/go-to-uri reset-url)
           (testing "User tries to reset the password with non-matching passwords"
             (input-text (find-element password-xpath) new-password)
             (input-text (find-element confirm-password-xpath)
@@ -237,21 +216,21 @@
             (click (find-element reset-button-xpath))
             (check-error-alert "Error: Password must be at least 6 characters."))
           (testing "User can still login, even though there is a reset key"
-            (go-to-uri "login")
-            (login-portal email password))
+            (selenium/go-to-uri "login")
+            (selenium/login-portal email password))
           (testing "User can reset password"
-            (go-to-uri "logout")
-            (go-to-uri reset-url)
+            (selenium/go-to-uri "logout")
+            (selenium/go-to-uri reset-url)
             (input-text (find-element password-xpath) new-password)
             (input-text (find-element confirm-password-xpath)
                         new-password)
             (click (find-element reset-button-xpath))
             ;; log in with new password
             (testing "...and login with new password"
-              (wait-until #(exists? login-email-input))
-              (input-text login-email-input email)
+              (wait-until #(exists? selenium/login-email-input))
+              (input-text selenium/login-email-input email)
               (input-text password-xpath new-password)
-              (click (find-element login-button))
+              (click (find-element selenium/login-button))
               (wait-until #(exists? {:xpath "//a[text()='LOG OUT']"}))
               (is (exists? {:xpath "//a[text()='LOG OUT']"})))))))))
 
@@ -265,10 +244,10 @@
                            :full-name full-name})
         manager (users/get-user-by-email email)]
     (testing "Account manager logs in, but they are not yet an account manager"
-      (go-to-uri "login")
-      (login-portal email password)
-      (wait-until #(exists? logout))
-      (is (exists? (find-element logout))))))
+      (selenium/go-to-uri "login")
+      (selenium/login-portal email password)
+      (wait-until #(exists? selenium/logout))
+      (is (exists? (find-element selenium/logout))))))
 
 (defn create-vehicle
   [vehicle-map]
@@ -317,10 +296,10 @@
                        :fuel-type "91 Octane"
                        :only-top-tier-gas? true}]
     (testing "A normal user can login"
-      (go-to-uri "login")
-      (login-portal email password)
-      (wait-until #(exists? logout))
-      (is (exists? (find-element logout))))
+      (selenium/go-to-uri "login")
+      (selenium/login-portal email password)
+      (wait-until #(exists? selenium/logout))
+      (is (exists? (find-element selenium/logout))))
     (testing "user can add vehicle"
       (wait-until #(exists? no-orders-message))
       ;; there shouldn't be an orders table
