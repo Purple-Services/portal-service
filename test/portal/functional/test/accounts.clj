@@ -40,6 +40,11 @@
   [account-id manager-id user-id]
   (str (account-manager-context-uri account-id manager-id) "/user/" user-id))
 
+(defn manager-get-vehicle-uri
+  [account-id manager-id vehicle-id]
+  (str (account-manager-context-uri account-id manager-id) "/vehicle/"
+       vehicle-id))
+
 (defn user-vehicle-uri
   [user-id vehicle-id]
   (str "/user/" user-id "/vehicle/" vehicle-id))
@@ -402,6 +407,26 @@
                          :id)
                         :headers manager-auth-cookie})
                       (get-in [:body :success])))
+              ;; manager can view their own vehicle
+              (is (= manager-vehicle-id
+                     (-> (test-utils/get-uri-json
+                          :get
+                          (manager-get-vehicle-uri
+                           account-id
+                           manager-user-id
+                           manager-vehicle-id)
+                          {:headers manager-auth-cookie})
+                         (get-in [:body :id]))))
+              ;; manager can view child vehicle
+              (is (= child-vehicle-id
+                     (-> (test-utils/get-uri-json
+                          :get
+                          (manager-get-vehicle-uri
+                           account-id
+                           manager-user-id
+                           child-vehicle-id)
+                          {:headers manager-auth-cookie})
+                         (get-in [:body :id]))))
               ;; a manager can add a vehicle to an account
               ;; with a child-user-id
               (is (-> (test-utils/get-uri-json

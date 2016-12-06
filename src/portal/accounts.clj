@@ -135,6 +135,14 @@
                           [(account-vehicles-sql account-id)])]
     (map #(vehicles/process-vehicle %) account-vehicles)))
 
+(defn account-can-view-vehicle?
+  [account-id vehicle-id]
+  (let [account-vehicles (raw-sql-query
+                          (db/conn)
+                          [(account-vehicles-sql account-id)])]
+    (not (empty? (filter #(= (:id %)
+                             vehicle-id) account-vehicles)))))
+
 (defn account-orders-sql
   [account-id]
   (str "SELECT " orders/order-cols-select " FROM `orders` "
