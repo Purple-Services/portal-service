@@ -41,15 +41,6 @@
        "account_managers.id = '" user-id "' "
        "WHERE vehicles.id = '" vehicle-id "';"))
 
-(defn manager-can-view-vehicle?
-  "Is the user-id authorized to view this vehicle-id as a manager?"
-  [user-id vehicle-id]
-  (let [vehicles (raw-sql-query
-                  (db/conn)
-                  [(manager-can-view-vehicle-sql user-id vehicle-id)])]
-    (not (empty? vehicles))))
-
-
 (defn process-vehicle
   "Process a vehicle to included as a JSON response"
   [vehicle]

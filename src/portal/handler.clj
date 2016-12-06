@@ -99,20 +99,6 @@
         manager-id (nth reg-match 2)]
     (users/manages-account? manager-id account-id)))
 
-(defn vehicle-is-viewable-by-manager?
-  "Given a route of
-  /account/<account-id>/manager/<manager-id>/vehicle/<vehicle-id>, check
-  that the manager can view vehicle"
-  [request]
-  (let [uri (:uri request)
-        reg-match (re-matches
-                   #"/account/([a-zA-Z0-9]{20})/manager/([a-zA-Z0-9]{20})/vehicle/([a-zA-Z0-9]{20})"
-                   uri)
-        account-id (second reg-match)
-        manager-id (nth reg-match 2)
-        vehicle-id (nth reg-match 3)]
-    (vehicles/manager-can-view-vehicle? manager-id vehicle-id)))
-
 (defn vehicle-user-id-valid-for-manager?
   "Given a route of
   /account/<account-id>/manager/<manager-id>/add-vehicle, check
@@ -142,6 +128,21 @@
         manager-id (nth reg-match 2)
         user-id (nth reg-match 3)]
     (accounts/account-can-view-user? account-id user-id)))
+
+(defn vehicle-is-viewable-by-manager?
+  "Given a route of
+  /account/<account-id>/manager/<manager-id>/vehicle/<vehicle-id>, check
+  that the manager can view vehicle"
+  [request]
+  (let [uri (:uri request)
+        reg-match (re-matches
+                   #"/account/([a-zA-Z0-9]{20})/manager/([a-zA-Z0-9]{20})/vehicle/([a-zA-Z0-9]{20})"
+                   uri)
+        account-id (second reg-match)
+        manager-id (nth reg-match 2)
+        vehicle-id (nth reg-match 3)]
+    (accounts/account-can-view-vehicle? account-id vehicle-id)))
+
 
 (defn on-error
   [request value]
@@ -295,7 +296,6 @@
                 (response
                  {:is-child-user? (users/is-child-account? user-id)})))
   (context "/account/:account-id/manager/:manager-id" [account-id manager-id]
-           ;; account manager can essentially see ALL users... NONO!
            (GET "/user/:user-id" [user-id]
                 (response
                  (users/get-user user-id)))
@@ -316,7 +316,6 @@
            (GET "/vehicles" []
                 (response
                  (accounts/account-vehicles account-id)))
-           ;; account manager can essentially see AL vehicles... NONO!
            (GET "/vehicle/:vehicle-id" [vehicle-id]
                 (response
                  (vehicles/get-vehicle vehicle-id))))
