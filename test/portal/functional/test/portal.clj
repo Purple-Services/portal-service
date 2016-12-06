@@ -8,13 +8,14 @@
                                           clear-test-database
                                           setup-ebdb-test-for-conn-fixture
                                           clear-and-populate-test-database
-                                          clear-and-populate-test-database-fixture]]
+                                          clear-and-populate-test-database-fixture
+                                          reset-db!]]
             [portal.login :as login]
             [portal.users :as users]
             [portal.test.login-test :refer [register-user!]]))
 
 ;; for manual testing:
-;; (selenium/setup-test-env!) ; make sure profiles.clj was loaded with
+;; (selenium/startup-test-env!) ; make sure profiles.clj was loaded with
 ;;                   ; :base-url "http:localhost:5744/"
 ;; -- run tests --
 ;; (reset-db!) ; note: most tests will need this run between them anyhow
@@ -35,6 +36,68 @@
 (def login-email-input
   {:xpath "//input[@type='text' and @placeholder='email']"})
 (def forgot-password-link {:xpath "//a[@class='forgot-password']"})
+
+(def vehicles-link {:xpath "//li/a/div[text()='VEHICLES']"})
+(def add-vehicle-button {:xpath "//div[@id='vehicles']//button[text()=' Add']"})
+;; vehicle form
+(def vehicle-form-make {:xpath "//div[@id='vehicles']//form//input[@placeholder='Make']"})
+(def vehicle-form-model {:xpath "//div[@id='vehicles']//form//input[@placeholder='Model']"})
+(def vehicle-form-year {:xpath "//div[@id='vehicles']//form//input[@placeholder='Year']"})
+(def vehicle-form-color {:xpath "//div[@id='vehicles']//form//input[@placeholder='Color']"})
+(def vehicle-form-license-plate
+  {:xpath "//div[@id='vehicles']//form//input[@placeholder='License Plate']"})
+(def vehicle-form-fuel-type
+  {:xpath "//div[@id='vehicles']//form//select"})
+(def vehicle-form-only-top-tier-gas?
+  {:xpath "//div[@id='vehicles']//form//p[text()='Only Top Tier Gas?']/ancestor::div[@class='row']//input[@type='checkbox']"})
+(def vehicle-form-dismiss
+  {:xpath "//div[@id='vehicles']//form//button[text()='Dismiss']"})
+(def vehicle-form-save
+  {:xpath "//div[@id='vehicles']//form//button[text()='Save']"})
+(def vehicle-form-yes
+  {:xpath "//div[@id='vehicles']//form//button[text()='Yes']"})
+(def vehicle-form-no
+  {:xpath "//div[@id='vehicles']//form//button[text()='No']"})
+(def vehicles-table
+  {:xpath "//div[@id='vehicles']//table"})
+(def no-vehicles-message
+  {:xpath "//h3[text()='No orders currently associated with account']"})
+
+(def no-orders-message
+  {:xpath "//h3[text()='No orders currently associated with account']"})
+
+(defn select-checkbox
+  "If checked? is false, the checkbox is unchecked. Otherwise, the check is
+  checked."
+  [checkbox checked?]
+  (when (or
+         (and (not checked?)
+              (selected? checkbox))
+         (and checked?
+              (not (selected? checkbox))))
+    (click checkbox)))
+
+(defn fill-vehicle-form
+  [{:keys [make model year color license-plate fuel-type only-top-tier-gas?]
+    :or {make "Nissan"
+         model "Altima"
+         year "2006"
+         color "Blue"
+         license-plate "FOOBAR"
+         fuel-type "87 Octane"
+         only-top-tier-gas? true}}]
+  (clear vehicle-form-make)
+  (input-text vehicle-form-make make)
+  (clear vehicle-form-model)
+  (input-text vehicle-form-model model)
+  (clear vehicle-form-year)
+  (input-text vehicle-form-year year)
+  (clear vehicle-form-color)
+  (input-text vehicle-form-color color)
+  (clear vehicle-form-license-plate)
+  (input-text vehicle-form-license-plate license-plate)
+  (select-by-text vehicle-form-fuel-type fuel-type)
+  (select-checkbox vehicle-form-only-top-tier-gas? only-top-tier-gas?))
 
 (use-fixtures :once selenium/with-server selenium/with-browser
   selenium/with-redefs-fixture)
@@ -207,6 +270,23 @@
       (wait-until #(exists? logout))
       (is (exists? (find-element logout))))))
 
+(defn create-vehicle
+  [vehicle-map]
+  (click add-vehicle-button)
+  (wait-until #(exists? vehicle-form-make))
+  ;; check to make sure defaults are turned off
+  (fill-vehicle-form vehicle-map)
+  (click vehicle-form-save)
+  (wait-until #(exists? vehicle-form-yes))
+  (click vehicle-form-yes))
+
+(defn vehicle-map->vehicle-table-row
+  [{:keys [make model year color license-plate fuel-type only-top-tier-gas?]}]
+  (str make " " model " " color " " year " " license-plate " " fuel-type " "
+       (if only-top-tier-gas?
+         "Yes"
+         "No")))
+
 (deftest selenium-regular-user
   (let [email "foo@bar.com"
         password "foobar"
@@ -215,9 +295,86 @@
         _ (register-user! {:platform-id email
                            :password password
                            :full-name full-name})
-        manager (users/get-user-by-email email)]
+        first-vehicle {:make "Nissan"
+                       :model "Altima"
+                       :year "2006"
+                       :color "Blue"
+                       :license-plate "FOOBAR"
+                       :fuel-type "91 Octane"
+                       :only-top-tier-gas? false}
+        second-vehicle {:make "Honda"
+                        :model "Accord"
+                        :year "2009"
+                        :color "Black"
+                        :license-plate "BAZQUX"
+                        :fuel-type "87 Octane"
+                        :only-top-tier-gas? true}
+        third-vehicle {:make "Ford"
+                       :model "F150"
+                       :year "1995"
+                       :color "White"
+                       :license-plate "QUUXCORGE"
+                       :fuel-type "91 Octane"
+                       :only-top-tier-gas? true}]
     (testing "A normal user can login"
       (go-to-uri "login")
       (login-portal email password)
       (wait-until #(exists? logout))
-      (is (exists? (find-element logout))))))
+      (is (exists? (find-element logout))))
+    (testing "user can add vehicle"
+      (wait-until #(exists? no-orders-message))
+      ;; there shouldn't be an orders table
+      (is (exists? no-orders-message))
+      ;; click on the vehicles link
+      (wait-until #(exists? vehicles-link))
+      (click vehicles-link)
+      ;; there shouldn't be a table
+      (is (exists? no-vehicles-message))
+      (create-vehicle first-vehicle)
+      (wait-until #(exists? vehicles-table))
+      ;; there should only be one vehicle
+      (is (= 1
+             (count
+              (find-elements
+               {:xpath "//div[@id='vehicles']//table/tbody/tr"}))))
+      ;; the first row should correspond to the first-vehicle
+      (is (= (vehicle-map->vehicle-table-row
+              first-vehicle)
+             (text
+              {:xpath "//div[@id='vehicles']//table/tbody/tr[position()=1]"})))
+      ;; add another vehicle
+      (create-vehicle second-vehicle)
+      (wait-until #(exists? vehicles-table))
+      ;; now there should be two vehicles
+      (wait-until #(= 2
+                      (count
+                       (find-elements
+                        {:xpath "//div[@id='vehicles']//table/tbody/tr"}))))
+      (is (= 2
+             (count
+              (find-elements
+               {:xpath "//div[@id='vehicles']//table/tbody/tr"}))))
+      ;; the second row should correspond to the second-vehicle
+      (is (= (vehicle-map->vehicle-table-row
+              second-vehicle)
+             (text
+              {:xpath "//div[@id='vehicles']//table/tbody/tr[position()=2]"})))
+      ;; 1 and 2 items is trivial, check that 3 work
+      ;; add another vehicle
+      (create-vehicle third-vehicle)
+      (wait-until #(exists? vehicles-table))
+      ;; now there should be two vehicles
+      (wait-until #(= 3
+                      (count
+                       (find-elements
+                        {:xpath "//div[@id='vehicles']//table/tbody/tr"}))))
+      (is (= 3
+             (count
+              (find-elements
+               {:xpath "//div[@id='vehicles']//table/tbody/tr"}))))
+      ;; the second row should correspond to the second-vehicle
+      (is (= (vehicle-map->vehicle-table-row
+              third-vehicle)
+             (text
+              {:xpath "//div[@id='vehicles']//table/tbody/tr[position()=3]"})))
+      )))

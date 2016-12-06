@@ -23,7 +23,7 @@
 ;; 	    (add-hook 'cider-file-loaded-hook 'portal-clj-reset)))
 
 ;; for manual testing:
-;; (setup-test-env!) ; make sure profiles.clj was loaded with
+;; (startup-test-env!) ; make sure profiles.clj was loaded with
 ;;                   ; :base-url "http:localhost:5744/"
 ;; -- run tests --
 ;; (reset-db!) ; note: most tests will need this run between them anyhow
@@ -86,7 +86,7 @@
   (def server (start-server test-port))
   (setup-ebdb-test-pool!))
 
-(defn setup-test-env!
+(defn startup-test-env!
   []
   (reset-vars!)
   (set-server!)
@@ -102,3 +102,10 @@
 
 ;; end fns for testing at the repl
 
+
+(defn get-table-body-cell-text
+  "Given a table, get the text in the table body at row r and column c"
+  [table r c]
+  (let [table-xpath (or (:xpath table) table)]
+    (text {:xpath (str table-xpath "/tbody/tr[position()= " r "]"
+                       "/td[position()=" c "]")})))
