@@ -14,6 +14,7 @@
 ;; without having the vars named improperly
 ;; here is an example of what you will need below
 ;; ex:  ~/emacs/cider/cider-config.el
+;;
 ;; (defun portal-clj-reset ()
 ;;   (when (string= (buffer-name) "selenium.clj")
 ;;     (cider-interactive-eval
@@ -102,10 +103,33 @@
 
 ;; end fns for testing at the repl
 
+;; common elements
+(def login-email-input
+  {:xpath "//input[@type='text' and @placeholder='email']"})
 
+(def login-button {:xpath "//button[text()='LOGIN']"})
+
+(def logout {:xpath "//a[text()='LOG OUT']"})
+
+;; fns for controlling the browser
 (defn get-table-body-cell-text
   "Given a table, get the text in the table body at row r and column c"
   [table r c]
   (let [table-xpath (or (:xpath table) table)]
     (text {:xpath (str table-xpath "/tbody/tr[position()= " r "]"
                        "/td[position()=" c "]")})))
+
+(defn go-to-uri
+  "Given an uri, go to it"
+  [uri]
+  (to (str base-url uri)))
+
+(defn login-portal
+  "Login with the client using email and password as credentials"
+  [email password]
+  (go-to-uri "login")
+  (let [email-input    (find-element login-email-input)
+        password-input (find-element {:xpath "//input[@type='password']"})]
+    (input-text email-input email)
+    (input-text password-input password)
+    (click (find-element login-button))))

@@ -1,11 +1,13 @@
 (ns portal.functional.test.accounts
-  (:require [clojure.test :refer [deftest is testing use-fixtures]]
+  (:require [clj-webdriver.taxi :refer :all]
+            [clojure.test :refer [deftest is testing use-fixtures]]
             [common.db :as db]
             [common.util :as util]
             [portal.accounts :as accounts]
             [portal.functional.test.cookies :as cookies]
             [portal.functional.test.vehicles :as test-vehicles]
             [portal.functional.test.orders :as test-orders]
+            [portal.functional.test.selenium :as selenium]
             [portal.test.db-tools :refer
              [setup-ebdb-test-pool!
               setup-ebdb-test-for-conn-fixture
@@ -17,7 +19,9 @@
             [portal.test.utils :as test-utils]
             [portal.vehicles :as vehicles]))
 
-(use-fixtures :once setup-ebdb-test-for-conn-fixture)
+(use-fixtures :once selenium/with-server selenium/with-browser
+  selenium/with-redefs-fixture  setup-ebdb-test-for-conn-fixture)
+
 (use-fixtures :each clear-and-populate-test-database-fixture)
 
 (defn account-manager-context-uri
@@ -528,13 +532,50 @@
                          (get-in [:status])))))))))))
 
 
-(deftest selenium-acccount-user
-  ;; users not shown for account-children
-  ;; is shown for managers
-  ;; users can be added
-  ;; child account can login and change password
-  ;; users can add vehicles
-  ;; .. but not if they are child users
-  ;; account managers can add vehicles
-  ;; child accounts can't
-  )
+(deftest selenium-account-user
+  (with-redefs [common.sendgrid/send-template-email
+                (fn [to subject message
+                     & {:keys [from template-id substitutions]}]
+                  (println "No reset password email was actually sent"))]
+    (let [manager-email "manager@bar.com"
+          manager-password "manager"
+          manager-full-name "Manager"
+          ;; register a manager
+          _ (login-test/register-user! {:platform-id manager-email
+                                        :password manager-password
+                                        :full-name manager-full-name})
+          manager (login/get-user-by-email manager-email)
+          account-name "FooBar.com"
+          ;; register an account
+          _ (accounts/create-account! account-name)
+          ;; retrieve the account
+          account (accounts/get-account-by-name account-name)
+          account-id (:id account)
+          ;; associate manager with account
+          _ (accounts/associate-account-manager! (:id manager) (:id account))
+          ;; child account
+          child-email "james@purpleapp.com"
+          child-password "child"
+          child-full-name "Foo Bar"
+          ;; register another account
+          _ (accounts/create-account! "BazQux.com")
+          second-child-email "baz@bar.com"
+          second-child-full-name "Baz Bar"
+          ;; A regular user
+          user-email "baz@qux.com"
+          user-password "bazqux"
+          user-full-name "Baz Qux"]
+      (testing "Users can be added"
+        (selenium/go-to-uri "login")
+        (selenium/login-portal manager-email manager-password)
+        (wait-until #(exists? selenium/logout))
+        (is (exists? (find-element selenium/logout))))
+      ;; users can be added
+      ;; users not shown for account-children
+      ;; is shown for managers
+      ;; child account can login and change password
+      ;; users can add vehicles
+      ;; .. but not if they are child users
+      ;; account managers can add vehicles
+      ;; account manages can assign users that are active to vehicles
+      )))
