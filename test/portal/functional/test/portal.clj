@@ -120,26 +120,6 @@
            (find-element logout-lg-xpath)
            (find-element logout-sm-xpath))))
 
-(defn check-error-alert
-  "Wait for an error alert to appear and test that it says msg"
-  [msg]
-  (let [alert-danger {:xpath "//div[contains(@class,'alert-danger')]"}]
-    (wait-until #(exists?
-                  alert-danger))
-    (is (= msg
-           (text (find-element
-                  alert-danger))))))
-
-(defn check-success-alert
-  "Wait for an error alert to appear and test that it says msg"
-  [msg]
-  (let [alert-danger {:xpath "//div[contains(@class,'alert-success')]"}]
-    (wait-until #(exists?
-                  alert-danger))
-    (is (= msg
-           (text (find-element
-                  alert-danger))))))
-
 (deftest login-tests
   (let [email "foo@bar.com"
         password "foobar"
@@ -148,7 +128,8 @@
     (testing "Login with a username and password that doesn't exist"
       (selenium/go-to-uri "login")
       (selenium/login-portal email password)
-      (check-error-alert "Error: Incorrect email / password combination."))
+      (is (= (selenium/get-error-alert)
+             "Error: Incorrect email / password combination.")))
     (testing "Create a user, login with credentials"
       (register-user! {:platform-id email
                        :password password
@@ -174,7 +155,8 @@
       (selenium/go-to-uri "login")
       (input-text (find-element selenium/login-email-input) email)
       (click (find-element forgot-password-link))
-      (check-error-alert "Error: Sorry, we don't recognize that email address. Are you sure you didn't use Facebook or Google to log in?"))
+      (is (= (selenium/get-error-alert)
+             "Error: Sorry, we don't recognize that email address. Are you sure you didn't use Facebook or Google to log in?")))
     (testing "User resets password"
       (with-redefs [common.sendgrid/send-template-email
                     (fn [to subject message]
@@ -185,7 +167,8 @@
         (selenium/go-to-uri "login")
         (input-text (find-element  selenium/login-email-input) email)
         (click (find-element forgot-password-link))
-        (check-success-alert "An email has been sent to james@purpleapp.com. Please click the link included in that message to reset your password.")
+        (is (= (selenium/get-success-alert)
+               "An email has been sent to james@purpleapp.com. Please click the link included in that message to reset your password."))
         (let [reset-key (:reset_key (login/get-user-by-email email))
               reset-url (str "reset-password/" reset-key)
               password-xpath {:xpath "//input[@type='password' and @placeholder='password']"}
@@ -199,7 +182,8 @@
             (input-text (find-element confirm-password-xpath)
                         wrong-confirm-password)
             (click (find-element reset-button-xpath))
-            (check-error-alert "Error: Passwords do not match."))
+            (is (= (selenium/get-error-alert)
+                   "Error: Passwords do not match.")))
           (testing "User tries to reset the password with a password that is too short"
             (clear (find-element password-xpath))
             (wait-until #(string/blank?
@@ -214,7 +198,8 @@
                  (value (find-element confirm-password-xpath))))
             (input-text (find-element confirm-password-xpath) too-short)
             (click (find-element reset-button-xpath))
-            (check-error-alert "Error: Password must be at least 6 characters."))
+            (is (= (selenium/get-error-alert)
+                   "Error: Password must be at least 6 characters.")))
           (testing "User can still login, even though there is a reset key"
             (selenium/go-to-uri "login")
             (selenium/login-portal email password))
