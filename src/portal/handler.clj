@@ -181,6 +181,13 @@
                              vehicle-user-id-valid-for-user?
                              user-can-add-vehicle?) %))
     :on-error on-error}
+   {:pattern #"/user/.*/edit-vehicle"
+    :handler #(every? true?
+                      ((juxt user-id-matches-cookies?
+                             valid-session-wrapper?
+                             vehicle-user-id-valid-for-user?
+                             user-can-add-vehicle?) %))
+    :on-error on-error}
    {:pattern #"/user/.*/vehicle/.*"
     :handler #(every? true?
                       ((juxt user-id-matches-cookies?
@@ -193,6 +200,13 @@
                              valid-session-wrapper?) %))
     :on-error on-error}
    {:pattern #"/account/.*/manager/.*/add-vehicle"
+    :handler #(every? true?
+                      ((juxt manager-id-matches-cookies?
+                             valid-session-wrapper?
+                             vehicle-user-id-valid-for-manager?
+                             manager-id-manages-account?) %))
+    :on-error on-error}
+   {:pattern #"/account/.*/manager/.*/edit-vehicle"
     :handler #(every? true?
                       ((juxt manager-id-matches-cookies?
                              valid-session-wrapper?
@@ -280,9 +294,17 @@
                  (response
                   (let [new-vehicle (keywordize-keys body)]
                     (vehicles/create-vehicle! new-vehicle))))
+           (PUT "/edit-vehicle" {body :body}
+                (response
+                 (let [vehicle (keywordize-keys body)]
+                   (vehicles/edit-vehicle! vehicle))))
            (GET "/vehicles" []
                 (response
                  (vehicles/user-vehicles user-id)))
+           (PUT "/vehicles" {body :body}
+                (response
+                 (let [vehicle (keywordize-keys body)]
+                   (vehicles/edit-vehicle! vehicle))))
            (GET "/orders" []
                 (response
                  (orders/user-orders user-id)))
@@ -309,10 +331,10 @@
                  (response
                   (let [new-user (keywordize-keys body)]
                     (accounts/create-child-account! account-id new-user))))
-           (POST "/add-vehicle" {body :body}
+           (POST "/edit-vehicle" {body :body}
                  (response
-                  (let [new-vehicle (keywordize-keys body)]
-                    (vehicles/create-vehicle! new-vehicle))))
+                  (let [vehicle (keywordize-keys body)]
+                    (vehicles/edit-vehicle! vehicle))))
            (GET "/vehicles" []
                 (response
                  (accounts/account-vehicles account-id)))
