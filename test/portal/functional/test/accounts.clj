@@ -1,5 +1,7 @@
 (ns portal.functional.test.accounts
-  (:require [clj-webdriver.taxi :refer :all]
+  (:require [clj-time.format :as t]
+            [clj-webdriver.taxi :refer :all]
+            [clojure.string :as string]
             [clojure.test :refer [deftest is testing use-fixtures]]
             [common.db :as db]
             [common.util :as util]
@@ -100,6 +102,12 @@
   {:xpath "//div[@id='users']//form//button[text()='Yes']"})
 (def users-form-no
   {:xpath "//div[@id='users']//form//button[text()='No']"})
+(def users-pending-tab
+  {:xpath "//div[@id='users']//button[contains(text(),'Pending')]"})
+(def users-active-tab
+  {:xpath "//div[@id='users']//button[contains(text(),'Active')]"})
+(def users-table
+  {:xpath "//div[@id='users']//table"})
 
 (deftest account-managers-security
   (with-redefs [common.sendgrid/send-template-email
@@ -579,6 +587,27 @@
                                                   {:headers user-auth-cookie})
                          (get-in [:status])))))))))))
 
+(defn user-map->user-table-row
+  [{:keys [full-name email phone-number manager? created]
+    :or {created (util/unix->format (util/now-unix)
+                                    (t/formatter "M/d/yyyy"))}}]
+  (string/join " " (filterv (comp not string/blank?)
+                            [full-name email phone-number (if manager?
+                                                            "Yes"
+                                                            "No") created])))
+
+(defn create-user
+  [{:keys [email full-name]}]
+  (wait-until #(exists? add-users-button))
+  (click add-users-button)
+  (wait-until #(exists? users-form-email-address))
+  (clear users-form-email-address)
+  (input-text users-form-email-address email)
+  (clear users-form-full-name)
+  (input-text users-form-full-name full-name)
+  (click users-form-save)
+  (wait-until #(exists? users-form-yes))
+  (click users-form-yes))
 
 (deftest selenium-account-user
   (let [manager-email "manager@bar.com"
@@ -597,20 +626,18 @@
         account-id (:id account)
         ;; associate manager with account
         _ (accounts/associate-account-manager! (:id manager) (:id account))
-        manager-login-response (test-utils/get-uri-json
-                                :post "/login"
-                                {:json-body {:email manager-email
-                                             :password manager-password}})
-        manager-user-id (cookies/get-cookie-user-id manager-login-response)
-        manager-auth-cookie (cookies/auth-cookie manager-login-response)
         ;; child account
         child-email "james@purpleapp.com"
         child-password "child"
         child-full-name "Foo Bar"
-        ;; register another account
-        _ (accounts/create-account! "BazQux.com")
+        ;; child account 2
         second-child-email "baz@bar.com"
         second-child-full-name "Baz Bar"
+        ;; child account 3
+        third-child-email "qux@quux.com"
+        third-child-full-name "Qux Quux"
+        ;; register another account
+        _ (accounts/create-account! "BazQux.com")
         ;; A regular user
         user-email "baz@qux.com"
         user-password "bazqux"
@@ -623,8 +650,17 @@
       (wait-until #(exists? users-link))
       (is (exists? (find-element users-link)))
       (click users-link)
-      (wait-until #(exists? add-users-button))
+      ;; check that the manager exists in the table
+      (wait-until #(exists? users-active-tab))
+      (click users-active-tab)
+      (is (= (user-map->user-table-row
+              {:full-name manager-full-name
+               :email manager-email
+               :manager? true})
+             (text
+              {:xpath "//div[@id='users']//table/tbody/tr[position()=1]"})))
       ;; check to see that a blank username is invalid
+      (wait-until #(exists? add-users-button))
       (click add-users-button)
       (wait-until #(exists? users-form-email-address))
       (clear users-form-email-address)
@@ -633,27 +669,65 @@
       (click users-form-save)
       (wait-until #(exists? users-form-yes))
       (click users-form-yes)
-      (is "Name can not be blank!"
-          (selenium/get-error-alert))
+      (wait-until #(exists? users-form-save))
+      (is (= "Name can not be blank!"
+             (selenium/get-error-alert)))
       (wait-until #(exists? users-form-dismiss))
       (click users-form-dismiss)
       ;; create a user
-      (wait-until #(exists? add-users-button))
-      (click add-users-button)
-      (wait-until #(exists? users-form-email-address))
-      (clear users-form-email-address)
-      (input-text users-form-email-address child-email)
-      (clear users-form-full-name)
-      (input-text users-form-full-name child-full-name)
-      (click users-form-save)
-      (wait-until #(exists? users-form-yes))
-      (click users-form-yes))
-    ;; users can be added
-    ;; users not shown for account-children
-    ;; is shown for managers
+      (create-user {:email child-email
+                    :full-name child-full-name})
+      ;; check that the user shows up in the pending table
+      (wait-until #(exists? users-pending-tab))
+      (click users-pending-tab)
+      (wait-until #(exists?
+                    {:xpath
+                     "//div[@id='users']//table/tbody/tr[position()=1]"}))
+      (is (= (user-map->user-table-row
+              {:full-name child-full-name
+               :email child-email
+               :manager? false})
+             (text
+              {:xpath "//div[@id='users']//table/tbody/tr[position()=1]"})))
+      ;; add a second child user
+      (create-user {:email second-child-email
+                    :full-name second-child-full-name})
+      ;; check that the user shows up in the pending table
+      (wait-until #(exists? users-pending-tab))
+      (click users-pending-tab)
+      (wait-until #(exists?
+                    {:xpath
+                     "//div[@id='users']//table/tbody/tr[position()=2]"}))
+      (is (= (user-map->user-table-row
+              {:full-name second-child-full-name
+               :email second-child-email
+               :manager? false})
+             (text
+              {:xpath "//div[@id='users']//table/tbody/tr[position()=2]"})))
+      ;; add a third child user
+      (create-user {:email third-child-email
+                    :full-name third-child-full-name})
+      ;; check that the user shows up in the pending table
+      (wait-until #(exists? users-pending-tab))
+      (click users-pending-tab)
+      (wait-until #(exists?
+                    {:xpath
+                     "//div[@id='users']//table/tbody/tr[position()=3]"}))
+      (is (= (user-map->user-table-row
+              {:full-name third-child-full-name
+               :email third-child-email
+               :manager? false})
+             (text
+              {:xpath "//div[@id='users']//table/tbody/tr[position()=3]"}))))
+    (testing "Manager adds vehicles"
+      ;; account managers can add vehicles
+      ;; account managers can assign users to vehicles
+      ;; this won't work for now
+      )
+    (testing "Child account can't add vehicle"
+      ;; users not shown for account-children
+      ;; child users can't add vehicles
+      )
     ;; child account can login and change password
     ;; users can add vehicles
-    ;; .. but not if they are child users
-    ;; account managers can add vehicles
-    ;; account manages can assign users that are active to vehicles
     ))
