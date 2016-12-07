@@ -7,9 +7,10 @@
             [common.util :as util]
             [portal.accounts :as accounts]
             [portal.functional.test.cookies :as cookies]
-            [portal.functional.test.vehicles :as test-vehicles]
             [portal.functional.test.orders :as test-orders]
+            [portal.functional.test.portal :as portal]
             [portal.functional.test.selenium :as selenium]
+            [portal.functional.test.vehicles :as test-vehicles]
             [portal.test.db-tools :refer
              [setup-ebdb-test-pool!
               setup-ebdb-test-for-conn-fixture
@@ -641,7 +642,32 @@
         ;; A regular user
         user-email "baz@qux.com"
         user-password "bazqux"
-        user-full-name "Baz Qux"]
+        user-full-name "Baz Qux"
+        ;; vehicles
+        manager-vehicle {:make "Nissan"
+                         :model "Altima"
+                         :year "2006"
+                         :color "Blue"
+                         :license-plate "FOOBAR"
+                         :fuel-type "91 Octane"
+                         :only-top-tier-gas? false
+                         :user manager-full-name}
+        first-child-vehicle {:make "Honda"
+                             :model "Accord"
+                             :year "2009"
+                             :color "Black"
+                             :license-plate "BAZQUX"
+                             :fuel-type "87 Octane"
+                             :only-top-tier-gas? true
+                             :user child-full-name}
+        second-child-vehicle {:make "Ford"
+                              :model "F150"
+                              :year "1995"
+                              :color "White"
+                              :license-plate "QUUXCORGE"
+                              :fuel-type "91 Octane"
+                              :only-top-tier-gas? true
+                              :user second-child-full-name}]
     (testing "Users can be added"
       (selenium/go-to-uri "login")
       (selenium/login-portal manager-email manager-password)
@@ -720,7 +746,32 @@
              (text
               {:xpath "//div[@id='users']//table/tbody/tr[position()=3]"}))))
     (testing "Manager adds vehicles"
+      (click portal/vehicles-link)
+      (wait-until #(exists? portal/no-vehicles-message))
       ;; account managers can add vehicles
+      (portal/create-vehicle manager-vehicle)
+      (wait-until #(exists?
+                    {:xpath
+                     "//div[@id='vehicles']//table/tbody/tr[position()=1]"}))
+      (is (= (portal/vehicle-map->vehicle-table-row manager-vehicle)
+             (text
+              {:xpath "//div[@id='vehicles']//table/tbody/tr[position()=1]"})))
+      ;; add another vehicle
+      (portal/create-vehicle first-child-vehicle)
+      (wait-until #(exists?
+                    {:xpath
+                     "//div[@id='vehicles']//table/tbody/tr[position()=2]"}))
+      (is (= (portal/vehicle-map->vehicle-table-row first-child-vehicle)
+             (text
+              {:xpath "//div[@id='vehicles']//table/tbody/tr[position()=2]"})))
+      ;; add the third vehicle
+      (portal/create-vehicle second-child-vehicle)
+      (wait-until #(exists?
+                    {:xpath
+                     "//div[@id='vehicles']//table/tbody/tr[position()=3]"}))
+      (is (= (portal/vehicle-map->vehicle-table-row second-child-vehicle)
+             (text
+              {:xpath "//div[@id='vehicles']//table/tbody/tr[position()=3]"})))
       ;; account managers can assign users to vehicles
       ;; this won't work for now
       )
