@@ -1,5 +1,6 @@
 (ns portal.functional.test.accounts
-  (:require [clj-time.format :as t]
+  (:require [crypto.password.bcrypt :as bcrypt]
+            [clj-time.format :as t]
             [clj-webdriver.taxi :refer :all]
             [clojure.string :as string]
             [clojure.test :refer [deftest is testing use-fixtures]]
@@ -777,8 +778,28 @@
       )
     (testing "Child account can't add vehicle"
       ;; users not shown for account-children
-      ;; child users can't add vehicles
-      )
+      (portal/logout-portal)
+      (selenium/go-to-uri "login")
+      ;; set the password for the child user
+      (is (:success (db/!update
+                     (db/conn) "users"
+                     {:reset_key ""
+                      :password_hash (bcrypt/encrypt child-password)}
+                     {:id (:id (login/get-user-by-email child-email))})))
+      (selenium/login-portal child-email child-password)
+      (wait-until #(exists? selenium/logout))
+      ;; child users don't have an add vehicles button
+      (click portal/vehicles-link)
+      (wait-until #(exists? portal/vehicles-table))
+      (is (not (exists? portal/add-vehicle-button)))
+      ;; child users can see the vehicle they are assigned to
+      (wait-until #(exists?
+                    {:xpath
+                     "//div[@id='vehicles']//table/tbody/tr[position()=1]"}))
+      (is (= (portal/vehicle-map->vehicle-table-row (dissoc first-child-vehicle
+                                                            :user))
+             (text
+              {:xpath "//div[@id='vehicles']//table/tbody/tr[position()=1]"}))))
     ;; child account can login and change password
     ;; users can add vehicles
     ))
