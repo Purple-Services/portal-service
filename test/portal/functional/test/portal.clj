@@ -40,8 +40,10 @@
 (def vehicle-form-color {:xpath "//div[@id='vehicles']//form//input[@placeholder='Color']"})
 (def vehicle-form-license-plate
   {:xpath "//div[@id='vehicles']//form//input[@placeholder='License Plate']"})
+(def vehicle-form-user
+  {:xpath "//div[@id='vehicles']//form//p[text()='User']/ancestor::div[@class='row']//select"})
 (def vehicle-form-fuel-type
-  {:xpath "//div[@id='vehicles']//form//select"})
+  {:xpath "//div[@id='vehicles']//form//p[text()='Fuel Type']/ancestor::div[@class='row']//select"})
 (def vehicle-form-only-top-tier-gas?
   {:xpath "//div[@id='vehicles']//form//p[text()='Only Top Tier Gas?']/ancestor::div[@class='row']//input[@type='checkbox']"})
 (def vehicle-form-dismiss
@@ -71,27 +73,6 @@
               (not (selected? checkbox))))
     (click checkbox)))
 
-(defn fill-vehicle-form
-  [{:keys [make model year color license-plate fuel-type only-top-tier-gas?]
-    :or {make "Nissan"
-         model "Altima"
-         year "2006"
-         color "Blue"
-         license-plate "FOOBAR"
-         fuel-type "87 Octane"
-         only-top-tier-gas? true}}]
-  (clear vehicle-form-make)
-  (input-text vehicle-form-make make)
-  (clear vehicle-form-model)
-  (input-text vehicle-form-model model)
-  (clear vehicle-form-year)
-  (input-text vehicle-form-year year)
-  (clear vehicle-form-color)
-  (input-text vehicle-form-color color)
-  (clear vehicle-form-license-plate)
-  (input-text vehicle-form-license-plate license-plate)
-  (select-by-text vehicle-form-fuel-type fuel-type)
-  (select-checkbox vehicle-form-only-top-tier-gas? only-top-tier-gas?))
 
 (use-fixtures :once selenium/with-server selenium/with-browser
   selenium/with-redefs-fixture setup-ebdb-test-for-conn-fixture)
@@ -234,6 +215,32 @@
       (wait-until #(exists? selenium/logout))
       (is (exists? (find-element selenium/logout))))))
 
+(defn fill-vehicle-form
+  [{:keys [make model year color license-plate fuel-type only-top-tier-gas?
+           user]
+    :or {make "Nissan"
+         model "Altima"
+         year "2006"
+         color "Blue"
+         license-plate "FOOBAR"
+         fuel-type "87 Octane"
+         only-top-tier-gas? true
+         user nil}}]
+  (clear vehicle-form-make)
+  (input-text vehicle-form-make make)
+  (clear vehicle-form-model)
+  (input-text vehicle-form-model model)
+  (clear vehicle-form-year)
+  (input-text vehicle-form-year year)
+  (clear vehicle-form-color)
+  (input-text vehicle-form-color color)
+  (clear vehicle-form-license-plate)
+  (input-text vehicle-form-license-plate license-plate)
+  (when-not (nil? user)
+    (select-by-text vehicle-form-user user))
+  (select-by-text vehicle-form-fuel-type fuel-type)
+  (select-checkbox vehicle-form-only-top-tier-gas? only-top-tier-gas?))
+
 (defn create-vehicle
   [vehicle-map]
   (click add-vehicle-button)
@@ -245,11 +252,13 @@
   (click vehicle-form-yes))
 
 (defn vehicle-map->vehicle-table-row
-  [{:keys [make model year color license-plate fuel-type only-top-tier-gas?]}]
-  (str make " " model " " color " " year " " license-plate " " fuel-type " "
-       (if only-top-tier-gas?
-         "Yes"
-         "No")))
+  [{:keys [make model year color license-plate fuel-type only-top-tier-gas?
+           user]}]
+  (string/join " " (filterv (comp not string/blank?)
+                            [make model color year license-plate fuel-type
+                             (if only-top-tier-gas?
+                               "Yes"
+                               "No") user])))
 
 (deftest selenium-regular-user
   (let [email "foo@bar.com"
