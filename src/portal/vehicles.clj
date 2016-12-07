@@ -96,3 +96,19 @@
     ;; send error message
     {:success false
      :validation (b/validate new-vehicle vehicle-validations)}))
+
+(defn edit-vehicle!
+  "Edit a vehicle"
+  [vehicle]
+  (if (b/valid? vehicle vehicle-validations)
+    (let [vehicle-id (:id vehicle)
+          update-vehicle-result (db/!update (db/conn) "vehicles"
+                                            vehicle
+                                            {:id (:id vehicle)})]
+      (if (:success update-vehicle-result)
+        (assoc update-vehicle-result :id (:id vehicle))
+        {:success false
+         :message "There was an error when modifying this vehicle"}))
+    ;; send error message
+    {:success false
+     :validation (b/validate vehicle vehicle-validations)}))
