@@ -141,3 +141,21 @@
     (input-text email-input email)
     (input-text password-input password)
     (click (find-element login-button))))
+
+(defn get-error-alert
+  "Wait for an error alert to appear and test that it says msg"
+  []
+  (let [alert-danger {:xpath "//div[contains(@class,'alert-danger')]"}]
+    (wait-until #(exists?
+                  alert-danger))
+    (text (find-element
+           alert-danger))))
+
+(defn get-success-alert
+  "Wait for an error alert to appear and test that it says msg"
+  []
+  (let [alert-danger {:xpath "//div[contains(@class,'alert-success')]"}]
+    (wait-until #(exists?
+                  alert-danger))
+    (text (find-element
+           alert-danger))))
