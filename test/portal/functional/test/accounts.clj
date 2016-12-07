@@ -18,12 +18,21 @@
             [portal.test.login-test :as login-test]
             [portal.test.utils :as test-utils]
             [portal.vehicles :as vehicles]))
+;; for manual testing:
+;; (selenium/startup-test-env!) ; make sure profiles.clj was loaded with
+;;                   ; :base-url "http:localhost:5744/"
+;; -- run tests --
+;; (reset-db!) ; note: most tests will need this run between them anyhow
+;; -- run more tests
+;; (selenium/shutdown-test-env!
+
 
 (use-fixtures :once selenium/with-server selenium/with-browser
   selenium/with-redefs-fixture  setup-ebdb-test-for-conn-fixture)
 
 (use-fixtures :each clear-and-populate-test-database-fixture)
 
+;; simplified routes
 (defn account-manager-context-uri
   [account-id manager-id]
   (str "/account/" account-id "/manager/" manager-id))
@@ -77,6 +86,20 @@
 (defn manager-orders-uri
   [account-id manager-id]
   (str (account-manager-context-uri account-id manager-id) "/orders"))
+
+;; common elements
+(def users-link  {:xpath "//li/a/div[text()='USERS']"})
+(def add-users-button {:xpath "//div[@id='users']//button[text()=' Add']"})
+(def users-form-email-address {:xpath "//div[@id='users']//form//input[@placeholder='Email Address']"})
+(def users-form-full-name {:xpath "//div[@id='users']//form//input[contains(@placeholder,'Full Name')]"})
+(def users-form-save
+  {:xpath "//div[@id='users']//form//button[text()='Save']"})
+(def users-form-dismiss
+  {:xpath "//div[@id='users']//form//button[text()='Dismiss']"})
+(def users-form-yes
+  {:xpath "//div[@id='users']//form//button[text()='Yes']"})
+(def users-form-no
+  {:xpath "//div[@id='users']//form//button[text()='No']"})
 
 (deftest account-managers-security
   (with-redefs [common.sendgrid/send-template-email
@@ -558,49 +581,78 @@
 
 
 (deftest selenium-account-user
-  (with-redefs [common.sendgrid/send-template-email
-                (fn [to subject message
-                     & {:keys [from template-id substitutions]}]
-                  (println "No reset password email was actually sent"))]
-    (let [manager-email "manager@bar.com"
-          manager-password "manager"
-          manager-full-name "Manager"
-          ;; register a manager
-          _ (login-test/register-user! {:platform-id manager-email
-                                        :password manager-password
-                                        :full-name manager-full-name})
-          manager (login/get-user-by-email manager-email)
-          account-name "FooBar.com"
-          ;; register an account
-          _ (accounts/create-account! account-name)
-          ;; retrieve the account
-          account (accounts/get-account-by-name account-name)
-          account-id (:id account)
-          ;; associate manager with account
-          _ (accounts/associate-account-manager! (:id manager) (:id account))
-          ;; child account
-          child-email "james@purpleapp.com"
-          child-password "child"
-          child-full-name "Foo Bar"
-          ;; register another account
-          _ (accounts/create-account! "BazQux.com")
-          second-child-email "baz@bar.com"
-          second-child-full-name "Baz Bar"
-          ;; A regular user
-          user-email "baz@qux.com"
-          user-password "bazqux"
-          user-full-name "Baz Qux"]
-      (testing "Users can be added"
-        (selenium/go-to-uri "login")
-        (selenium/login-portal manager-email manager-password)
-        (wait-until #(exists? selenium/logout))
-        (is (exists? (find-element selenium/logout))))
-      ;; users can be added
-      ;; users not shown for account-children
-      ;; is shown for managers
-      ;; child account can login and change password
-      ;; users can add vehicles
-      ;; .. but not if they are child users
-      ;; account managers can add vehicles
-      ;; account manages can assign users that are active to vehicles
-      )))
+  (let [manager-email "manager@bar.com"
+        manager-password "manager"
+        manager-full-name "Manager"
+        ;; register a manager
+        _ (login-test/register-user! {:platform-id manager-email
+                                      :password manager-password
+                                      :full-name manager-full-name})
+        manager (login/get-user-by-email manager-email)
+        account-name "FooBar.com"
+        ;; register an account
+        _ (accounts/create-account! account-name)
+        ;; retrieve the account
+        account (accounts/get-account-by-name account-name)
+        account-id (:id account)
+        ;; associate manager with account
+        _ (accounts/associate-account-manager! (:id manager) (:id account))
+        manager-login-response (test-utils/get-uri-json
+                                :post "/login"
+                                {:json-body {:email manager-email
+                                             :password manager-password}})
+        manager-user-id (cookies/get-cookie-user-id manager-login-response)
+        manager-auth-cookie (cookies/auth-cookie manager-login-response)
+        ;; child account
+        child-email "james@purpleapp.com"
+        child-password "child"
+        child-full-name "Foo Bar"
+        ;; register another account
+        _ (accounts/create-account! "BazQux.com")
+        second-child-email "baz@bar.com"
+        second-child-full-name "Baz Bar"
+        ;; A regular user
+        user-email "baz@qux.com"
+        user-password "bazqux"
+        user-full-name "Baz Qux"]
+    (testing "Users can be added"
+      (selenium/go-to-uri "login")
+      (selenium/login-portal manager-email manager-password)
+      (wait-until #(exists? selenium/logout))
+      (is (exists? (find-element selenium/logout)))
+      (wait-until #(exists? users-link))
+      (is (exists? (find-element users-link)))
+      (click users-link)
+      (wait-until #(exists? add-users-button))
+      ;; check to see that a blank username is invalid
+      ;; (click add-users-button)
+      ;; (wait-until #(exists? users-form-email-address))
+      ;; (clear users-form-email-address)
+      ;; (input-text users-form-email-address child-email)
+      ;; (clear users-form-full-name)
+      ;; (input-text users-form-full-name child-full-name)
+      ;; (click users-form-save)
+      ;; (wait-until #(exists? users-form-yes))
+      ;; (click users-form-yes)
+      ;; (wait-until #(exists? users-form-dismiss))
+      ;; (click users-form-dismiss)
+      ;; create a user
+      (wait-until #(exists? add-users-button))
+      (click add-users-button)
+      (wait-until #(exists? users-form-email-address))
+      (clear users-form-email-address)
+      (input-text users-form-email-address child-email)
+      (clear users-form-full-name)
+      (input-text users-form-full-name child-full-name)
+      (click users-form-save)
+      (wait-until #(exists? users-form-yes))
+      (click users-form-yes))
+    ;; users can be added
+    ;; users not shown for account-children
+    ;; is shown for managers
+    ;; child account can login and change password
+    ;; users can add vehicles
+    ;; .. but not if they are child users
+    ;; account managers can add vehicles
+    ;; account manages can assign users that are active to vehicles
+    ))

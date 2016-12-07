@@ -42,10 +42,18 @@
 
 (defn start-server [port]
   (let [_ (setup-ebdb-test-pool!)
+        ;; !!!BIG WARNING: with-redefs is very tricky in terms of being
+        ;; recognized across threads (which jetty uses!)
+        ;; that is why alter-var-root is used here
+        _   (alter-var-root
+             #'common.sendgrid/send-template-email
+             (fn [send-template-email]
+               (fn [to subject message
+                    & {:keys [from template-id substitutions]}]
+                 (println "No reset password email was actually sent"))))
         server (run-jetty #'portal.handler/handler
                           {:port port
-                           :join? false
-                           })]
+                           :join? false})]
     server))
 
 (defn stop-server [server]
