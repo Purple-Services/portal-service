@@ -21,6 +21,7 @@
             [portal.login :as login]
             [portal.test.login-test :as login-test]
             [portal.test.utils :as test-utils]
+            [portal.users :as users]
             [portal.vehicles :as vehicles]))
 ;; for manual testing:
 ;; (selenium/startup-test-env!) ; make sure profiles.clj was loaded with
@@ -665,6 +666,15 @@
                                                   {:headers user-auth-cookie})
                          (get-in [:status])))))))))))
 
+(defn user-creation-date
+  [email]
+  (-> email
+      (login/get-user-by-email)
+      :id
+      (users/get-user)
+      :timestamp_created
+      (util/unix->format (t/formatter "M/d/yyyy"))))
+
 (defn user-map->user-table-row
   [{:keys [full-name email phone-number manager? created]
     :or {created (util/unix->format (util/now-unix)
@@ -759,7 +769,8 @@
       (is (= (user-map->user-table-row
               {:full-name manager-full-name
                :email manager-email
-               :manager? true})
+               :manager? true
+               :created (user-creation-date manager-email)})
              (text
               {:xpath "//div[@id='users']//table/tbody/tr[position()=1]"})))
       ;; check to see that a blank username is invalid
@@ -789,7 +800,8 @@
       (is (= (user-map->user-table-row
               {:full-name child-full-name
                :email child-email
-               :manager? false})
+               :manager? false
+               :created (user-creation-date child-email)})
              (text
               {:xpath "//div[@id='users']//table/tbody/tr[position()=1]"})))
       ;; add a second child user
@@ -804,7 +816,8 @@
       (is (= (user-map->user-table-row
               {:full-name second-child-full-name
                :email second-child-email
-               :manager? false})
+               :manager? false
+               :created (user-creation-date second-child-email)})
              (text
               {:xpath "//div[@id='users']//table/tbody/tr[position()=2]"})))
       ;; add a third child user
@@ -819,7 +832,8 @@
       (is (= (user-map->user-table-row
               {:full-name third-child-full-name
                :email third-child-email
-               :manager? false})
+               :manager? false
+               :created (user-creation-date third-child-email)})
              (text
               {:xpath "//div[@id='users']//table/tbody/tr[position()=3]"}))))
     (testing "Manager adds vehicles"
