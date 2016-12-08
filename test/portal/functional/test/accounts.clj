@@ -262,8 +262,9 @@
         (let [;; manager vehicles
               _ (test-vehicles/create-vehicle! (test-vehicles/vehicle-map {})
                                                {:id manager-user-id})
-              manager-vehicle (vehicles/user-vehicles manager-user-id)
-              manager-vehicle-id (:id (first manager-vehicle))
+              manager-vehicles (vehicles/user-vehicles manager-user-id)
+              manager-vehicle (first manager-vehicles)
+              manager-vehicle-id (:id manager-vehicle)
               _ (test-vehicles/create-vehicle! (test-vehicles/vehicle-map
                                                 {:color "red"
                                                  :year "2006"})
@@ -274,8 +275,9 @@
                                                  :model "Accord"
                                                  :color "Silver"})
                                                {:id child-user-id})
-              child-vehicle (vehicles/user-vehicles child-user-id)
-              child-vehicle-id (:id (first child-vehicle))
+              child-vehicles (vehicles/user-vehicles child-user-id)
+              child-vehicle (first child-vehicles)
+              child-vehicle-id (:id child-vehicle)
               ;; second child vehicle
               second-child-user-id (:id
                                     (login/get-user-by-email
@@ -285,16 +287,19 @@
                                                  :model "Sonota"
                                                  :color "Orange"})
                                                {:id second-child-user-id})
-              second-child-vehicle (vehicles/user-vehicles second-child-user-id)
-              second-child-vehicle-id (:id (first second-child-vehicle))
+              second-child-vehicles (vehicles/user-vehicles
+                                     second-child-user-id)
+              second-child-vehicle (first second-child-vehicles)
+              second-child-vehicle-id (:id second-child-vehicle)
               ;; user-vehicle
               _ (test-vehicles/create-vehicle! (test-vehicles/vehicle-map
                                                 {:make "BMW"
                                                  :model "i8"
                                                  :color "Blue"})
                                                {:id user-id})
-              user-vehicle (vehicles/user-vehicles user-id)
-              user-vehicle-id (:id (first user-vehicle))]
+              user-vehicles (vehicles/user-vehicles user-id)
+              user-vehicle (first user-vehicles)
+              user-vehicle-id (:id user-vehicle)]
           (testing "Only account managers can see all vehicles"
             ;; manager sees all vehicles
             (is (= 4
@@ -405,13 +410,8 @@
                        (user-edit-vehicle-uri
                         user-id)
                        {:json-body
-                        (dissoc
-                         (test-vehicles/vehicle-map
-                          {:make "BMW"
-                           :model "i8"
-                           :color "Black"
-                           :user_id user-id})
-                         :id)
+                        (assoc user-vehicle
+                               :color "Black")
                         :headers user-auth-cookie})
                       (get-in [:body :success])))
               ;; a regular user can't add a vehicle to
@@ -439,13 +439,20 @@
                           (user-edit-vehicle-uri
                            user-id)
                           {:json-body
-                           (dissoc
-                            (test-vehicles/vehicle-map
-                             {:make "BMW"
-                              :model "i8"
-                              :color "Black"
-                              :user_id child-user-id})
-                            :id)
+                           (assoc child-vehicle
+                                  :color "Green")
+                           :headers user-auth-cookie})
+                         (get-in [:status]))))
+              ;; a regular user can't change the user_id to
+              ;; another user
+              (is (= 403
+                     (-> (test-utils/get-uri-json
+                          :put
+                          (user-edit-vehicle-uri
+                           user-id)
+                          {:json-body
+                           (assoc user-vehicle
+                                  :user_id manager-user-id)
                            :headers user-auth-cookie})
                          (get-in [:status]))))
               ;; a regular user can't add a vehicle to
@@ -520,6 +527,52 @@
                          :id)
                         :headers manager-auth-cookie})
                       (get-in [:body :success])))
+              ;; a manager can edit a vehicle associated with an account
+              (is (-> (test-utils/get-uri-json
+                       :put
+                       (manager-edit-vehicle-uri
+                        account-id
+                        manager-user-id)
+                       {:json-body
+                        (assoc child-vehicle
+                               :color "White")
+                        :headers manager-auth-cookie})
+                      (get-in [:body :success])))
+              ;; a manager can change the user to themselves
+              (is (-> (test-utils/get-uri-json
+                       :put
+                       (manager-edit-vehicle-uri
+                        account-id
+                        manager-user-id)
+                       {:json-body
+                        (assoc child-vehicle
+                               :user_id manager-user-id)
+                        :headers manager-auth-cookie})
+                      (get-in [:body :success])))
+              ;; a manager can change the user to that of a child user
+              (is (-> (test-utils/get-uri-json
+                       :put
+                       (manager-edit-vehicle-uri
+                        account-id
+                        manager-user-id)
+                       {:json-body
+                        (assoc manager-vehicle
+                               :user_id child-user-id)
+                        :headers manager-auth-cookie})
+                      (get-in [:body :success])))
+              ;; manager can't change a vehicle user-id to one they
+              ;; don't manage
+              (is (= 403
+                     (-> (test-utils/get-uri-json
+                          :put
+                          (manager-edit-vehicle-uri
+                           account-id
+                           manager-user-id)
+                          {:json-body
+                           (assoc manager-vehicle
+                                  :user_id user-id)
+                           :headers manager-auth-cookie})
+                         (get-in [:status]))))
               ;; a manager can't add a vehicle to an account
               ;; for a regular user
               (is (= 403
