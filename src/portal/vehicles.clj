@@ -57,7 +57,7 @@
                      vehicle-cols
                      {:id vehicle-id})))
 
-(def vehicle-validations
+(def new-vehicle-validations
   {;; confirm that the user_id is either their own, or belongs to
    ;; their account
    :user_id [[v/required :message "You must assign a user to this vehicle!"]]
@@ -81,10 +81,15 @@
                          " vehicle! If it does not have one, use \"NOPLATES\" ")
                     ]]})
 
+(def vehicle-validations
+  (assoc new-vehicle-validations
+         :id
+         [[v/required :message "You must speficy the id of the vehicle!"]]))
+
 (defn create-vehicle!
   "Create a new vehicle"
   [new-vehicle]
-  (if (b/valid? new-vehicle vehicle-validations)
+  (if (b/valid? new-vehicle new-vehicle-validations)
     (let [new-vehicle-id (util/rand-str-alpha-num 20)
           create-vehicle-result (db/!insert (db/conn) "vehicles"
                                             (assoc new-vehicle
@@ -95,15 +100,16 @@
          :message "There was an error when creating this vehicle"}))
     ;; send error message
     {:success false
-     :validation (b/validate new-vehicle vehicle-validations)}))
+     :validation (b/validate new-vehicle new-vehicle-validations)}))
 
 (defn edit-vehicle!
   "Edit a vehicle"
   [vehicle]
   (if (b/valid? vehicle vehicle-validations)
-    (let [vehicle-id (:id vehicle)
+    (let [update-vehicle (dissoc vehicle :timestamp_created)
+          vehicle-id (:id vehicle)
           update-vehicle-result (db/!update (db/conn) "vehicles"
-                                            vehicle
+                                            update-vehicle
                                             {:id (:id vehicle)})]
       (if (:success update-vehicle-result)
         (assoc update-vehicle-result :id (:id vehicle))
