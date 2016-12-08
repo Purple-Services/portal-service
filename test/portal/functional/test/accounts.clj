@@ -25,6 +25,8 @@
 ;; for manual testing:
 ;; (selenium/startup-test-env!) ; make sure profiles.clj was loaded with
 ;;                   ; :base-url "http:localhost:5744/"
+;; or if you are going to be doing ring mock tests
+;; (setup-ebdb-test-pool!)
 ;; -- run tests --
 ;; (reset-db!) ; note: most tests will need this run between them anyhow
 ;; -- run more tests
@@ -74,6 +76,10 @@
   [user-id]
   (str "/user/" user-id "/add-vehicle"))
 
+(defn user-edit-vehicle-uri
+  [user-id]
+  (str "/user/" user-id "/edit-vehicle"))
+
 (defn manager-vehicle-uri
   [account-id manager-id vehicle-id]
   (str (account-manager-context-uri account-id manager-id) "/vehicle/"
@@ -82,6 +88,10 @@
 (defn manager-add-vehicle-uri
   [account-id manager-id]
   (str (account-manager-context-uri account-id manager-id) "/add-vehicle"))
+
+(defn manager-edit-vehicle-uri
+  [account-id manager-id]
+  (str (account-manager-context-uri account-id manager-id) "/edit-vehicle"))
 
 (defn manager-vehicles-uri
   [account-id manager-id]
@@ -372,7 +382,7 @@
                          user-vehicle-id)
                         {:headers manager-auth-cookie})
                        (get-in [:status]))))
-            (testing "Adding vehicles test"
+            (testing "Adding and editing vehicles test"
               ;; a regular user can add a vehicle
               (is (-> (test-utils/get-uri-json
                        :post
@@ -384,6 +394,21 @@
                           {:make "BMW"
                            :model "i8"
                            :color "Red"
+                           :user_id user-id})
+                         :id)
+                        :headers user-auth-cookie})
+                      (get-in [:body :success])))
+              ;; a regular user can edit their own vehicle
+              (is (-> (test-utils/get-uri-json
+                       :put
+                       (user-edit-vehicle-uri
+                        user-id)
+                       {:json-body
+                        (dissoc
+                         (test-vehicles/vehicle-map
+                          {:make "BMW"
+                           :model "i8"
+                           :color "Black"
                            :user_id user-id})
                          :id)
                         :headers user-auth-cookie})
@@ -401,6 +426,23 @@
                              {:make "BMW"
                               :model "i8"
                               :color "Red"
+                              :user_id child-user-id})
+                            :id)
+                           :headers user-auth-cookie})
+                         (get-in [:status]))))
+              ;; a regular user can't edit a vehicle of
+              ;; another user-id
+              (is (= 403
+                     (-> (test-utils/get-uri-json
+                          :put
+                          (user-edit-vehicle-uri
+                           user-id)
+                          {:json-body
+                           (dissoc
+                            (test-vehicles/vehicle-map
+                             {:make "BMW"
+                              :model "i8"
+                              :color "Black"
                               :user_id child-user-id})
                             :id)
                            :headers user-auth-cookie})
@@ -518,6 +560,40 @@
                      (-> (test-utils/get-uri-json
                           :post
                           (user-add-vehicle-uri
+                           child-user-id)
+                          {:json-body
+                           (dissoc
+                            (test-vehicles/vehicle-map
+                             {:make "BMW"
+                              :model "i8"
+                              :color "Red"
+                              :user_id child-user-id})
+                            :id)
+                           :headers child-auth-cookie})
+                         (get-in [:status]))))
+              ;; a child user can't edit a vehicle associated with the account
+              (is (= 403
+                     (-> (test-utils/get-uri-json
+                          :put
+                          (manager-edit-vehicle-uri
+                           account-id
+                           child-user-id)
+                          {:json-body
+                           (dissoc
+                            (test-vehicles/vehicle-map
+                             {:make "Honda"
+                              :model "CRV"
+                              :color "Beige"
+                              :user_id child-vehicle-id})
+                            :id)
+                           :headers child-auth-cookie})
+                         (get-in [:status]))))
+              ;; temporary, users should still be allowed to edit vehicles
+              ;; a child user can't edit a vehicle, period
+              (is (= 403
+                     (-> (test-utils/get-uri-json
+                          :put
+                          (user-edit-vehicle-uri
                            child-user-id)
                           {:json-body
                            (dissoc
@@ -800,6 +876,4 @@
                                                             :user))
              (text
               {:xpath "//div[@id='vehicles']//table/tbody/tr[position()=1]"}))))
-    ;; child account can login and change password
-    ;; users can add vehicles
     ))
