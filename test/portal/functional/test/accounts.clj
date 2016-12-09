@@ -932,8 +932,7 @@
       (click portal/vehicle-form-save)
       (wait-until #(exists? portal/vehicle-form-yes))
       (click portal/vehicle-form-yes)
-      (wait-until
-       #(exists? {:xpath "//div[contains(@class,'alert-danger')]"}))
+      (wait-until #(exists? portal/vehicle-form-save))
       (is (= "You must assign a make to this vehicle!"
              (selenium/get-error-alert)))
       ;; corectly fill in the form, should be updated
