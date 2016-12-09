@@ -6,7 +6,7 @@
 (def order-cols
   [:id :status :target_time_start :target_time_end :vehicle_id :license_plate
    :address_street :tire_pressure_check :gas_price :gallons :service_fee
-   :total_price])
+   :total_price :lat :lng])
 
 (def order-cols-select
   (s/join "," (map #(str "orders." (name %)) order-cols)))
