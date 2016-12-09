@@ -315,8 +315,19 @@
               first-vehicle)
              (text
               {:xpath "//div[@id='vehicles']//table/tbody/tr[position()=1]"})))
-      ;; add another vehicle
-      (create-vehicle second-vehicle)
+      ;; add another vehicle, but with errors
+      (create-vehicle (assoc second-vehicle
+                             :make ""
+                             :model ""))
+      (wait-until #(exists? vehicle-form-save))
+      ;; check that there are error messages
+      (is (= "You must assign a make to this vehicle!"
+             (selenium/get-error-alert)))
+      ;; save another vehicle without resetting the form
+      (fill-vehicle-form second-vehicle)
+      (click vehicle-form-save)
+      (wait-until #(exists? vehicle-form-yes))
+      (click vehicle-form-yes)
       (wait-until #(exists? vehicles-table))
       ;; now there should be two vehicles
       (wait-until #(= 2
@@ -334,7 +345,7 @@
               {:xpath "//div[@id='vehicles']//table/tbody/tr[position()=2]"})))
       ;; 1 and 2 items is trivial, check that 3 work
       ;; add another vehicle
-      (create-vehicle third-vehicle)
+      (create-vehicle  third-vehicle)
       (wait-until #(exists? vehicles-table))
       ;; now there should be two vehicles
       (wait-until #(= 3
@@ -350,4 +361,39 @@
               third-vehicle)
              (text
               {:xpath "//div[@id='vehicles']//table/tbody/tr[position()=3]"})))
-      )))
+      (testing "A normal user can edit vehicles"
+        ;; a vehicle with errors is saved, proper error messages
+        (wait-until
+         #(exists?
+           {:xpath
+            "//div[@id='vehicles']//table/tbody/tr[position()=3]/td[last()]/a"}))
+        (click
+         {:xpath
+          "//div[@id='vehicles']//table/tbody/tr[position()=3]/td[last()]/a"})
+        (wait-until #(exists? vehicle-form-make))
+        (fill-vehicle-form (assoc third-vehicle
+                                  :make " "
+                                  :model " "))
+        (click vehicle-form-save)
+        (wait-until #(exists? vehicle-form-yes))
+        (click vehicle-form-yes)
+        (wait-until
+         #(exists? {:xpath "//div[contains(@class,'alert-danger')]"}))
+        (is (= "You must assign a make to this vehicle!"
+               (selenium/get-error-alert)))
+        ;; corectly fill in the form, should be updated
+        (wait-until #(exists? vehicle-form-save))
+        (fill-vehicle-form (assoc third-vehicle
+                                  :model "Escort"))
+        (click vehicle-form-save)
+        (wait-until #(exists? vehicle-form-yes))
+        (click vehicle-form-yes)
+        (wait-until
+         #(exists?
+           add-vehicle-button))
+        (is (= (vehicle-map->vehicle-table-row
+                (assoc third-vehicle
+                       :model "Escort"))
+               (text
+                {:xpath "//div[@id='vehicles']//table/tbody/tr[position()=3]"})))
+        ))))

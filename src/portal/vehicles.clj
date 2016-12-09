@@ -60,23 +60,23 @@
 (def new-vehicle-validations
   {;; confirm that the user_id is either their own, or belongs to
    ;; their account
-   :user_id [[v/required :message "You must assign a user to this vehicle!"]]
+   :user_id [[(comp not s/blank?) :message "You must assign a user to this vehicle!"]]
    :active [[v/required :message (str "You must designate this vehicle as "
                                       "either active or inactive!")]]
    ;; confirm that the year is between 19XX-20XX
-   :year    [[v/required :message "You must assign a year to this vehicle!"]]
-   :make    [[v/required :message "You must assign a make to this vehicle!"]]
-   :model   [[v/required :message "You must assign a model to this vehicle!"]]
-   :color   [[v/required :message "You must assign a color to this vehicle!"]]
+   :year    [[(comp not s/blank?) :message "You must assign a year to this vehicle!"]]
+   :make    [[(comp not s/blank?) :message "You must assign a make to this vehicle!"]]
+   :model   [[(comp not s/blank?) :message "You must assign a model to this vehicle!"]]
+   :color   [[(comp not s/blank?) :message "You must assign a color to this vehicle!"]]
    ;; confirm that this is 87 or 91
-   :gas_type [[v/required :message
+   :gas_type [[(comp not s/blank?) :message
                "You must assign an octane rating to this vehicle!"]]
    ;; confirm that this is 'yes' or 'no'
    :only_top_tier [[v/required :message
                     (str "You must select yes or no for only top tier to this "
                          "vehicle!")]]
    ;; confirm that this is < 15 chars or 'NOPLATES'
-   :license_plate [[v/required :message
+   :license_plate [[(comp not s/blank?) :message
                     (str "You must assign a license plate number to this"
                          " vehicle! If it does not have one, use \"NOPLATES\" ")
                     ]]})
@@ -84,7 +84,7 @@
 (def vehicle-validations
   (assoc new-vehicle-validations
          :id
-         [[v/required :message "You must specify the id of the vehicle!"]]))
+         [[(comp not s/blank?) :message "You must specify the id of the vehicle!"]]))
 
 (defn create-vehicle!
   "Create a new vehicle"
