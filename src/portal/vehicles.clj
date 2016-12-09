@@ -84,16 +84,22 @@
 (def vehicle-validations
   (assoc new-vehicle-validations
          :id
-         [[v/required :message "You must speficy the id of the vehicle!"]]))
+         [[v/required :message "You must specify the id of the vehicle!"]]))
 
 (defn create-vehicle!
   "Create a new vehicle"
   [new-vehicle]
   (if (b/valid? new-vehicle new-vehicle-validations)
     (let [new-vehicle-id (util/rand-str-alpha-num 20)
-          create-vehicle-result (db/!insert (db/conn) "vehicles"
-                                            (assoc new-vehicle
-                                                   :id new-vehicle-id))]
+          create-vehicle-result (db/!insert
+                                 (db/conn)
+                                 "vehicles"
+                                 (assoc
+                                  (select-keys
+                                   new-vehicle [:user_id :active :year
+                                                :make :model :color :gas_type
+                                                :only_top_tier :license_plate])
+                                  :id new-vehicle-id))]
       (if (:success create-vehicle-result)
         (assoc create-vehicle-result :id new-vehicle-id)
         {:success false
@@ -106,11 +112,15 @@
   "Edit a vehicle"
   [vehicle]
   (if (b/valid? vehicle vehicle-validations)
-    (let [update-vehicle (dissoc vehicle :timestamp_created)
-          vehicle-id (:id vehicle)
-          update-vehicle-result (db/!update (db/conn) "vehicles"
-                                            update-vehicle
-                                            {:id (:id vehicle)})]
+    (let [vehicle-id (:id vehicle)
+          update-vehicle-result (db/!update
+                                 (db/conn)
+                                 "vehicles"
+                                 (select-keys
+                                  vehicle [:user_id :active :year
+                                           :make :model :color :gas_type
+                                           :only_top_tier :license_plate])
+                                 {:id (:id vehicle)})]
       (if (:success update-vehicle-result)
         (assoc update-vehicle-result :id (:id vehicle))
         {:success false
