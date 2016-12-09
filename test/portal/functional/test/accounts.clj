@@ -915,11 +915,65 @@
                      "//div[@id='vehicles']//table/tbody/tr[position()=3]"}))
       (is (= (portal/vehicle-map->vehicle-table-row second-child-vehicle)
              (text
+              {:xpath "//div[@id='vehicles']//table/tbody/tr[position()=3]"}))))
+    (testing "Manager can edit vehicle"
+      ;; account managers edit vehicles error check
+      (wait-until
+       #(exists?
+         {:xpath
+          "//div[@id='vehicles']//table/tbody/tr[position()=3]/td[last()]/a"}))
+      (click
+       {:xpath
+        "//div[@id='vehicles']//table/tbody/tr[position()=3]/td[last()]/a"})
+      (wait-until #(exists? portal/vehicle-form-make))
+      (portal/fill-vehicle-form (assoc second-child-vehicle
+                                       :make " "
+                                       :model " "))
+      (click portal/vehicle-form-save)
+      (wait-until #(exists? portal/vehicle-form-yes))
+      (click portal/vehicle-form-yes)
+      (wait-until
+       #(exists? {:xpath "//div[contains(@class,'alert-danger')]"}))
+      (is (= "You must assign a make to this vehicle!"
+             (selenium/get-error-alert)))
+      ;; corectly fill in the form, should be updated
+      (wait-until #(exists? portal/vehicle-form-save))
+      (portal/fill-vehicle-form (assoc second-child-vehicle
+                                       :model "Escort"))
+      (click portal/vehicle-form-save)
+      (wait-until #(exists? portal/vehicle-form-yes))
+      (click portal/vehicle-form-yes)
+      (wait-until
+       #(exists?
+         portal/add-vehicle-button))
+      (is (= (portal/vehicle-map->vehicle-table-row
+              (assoc second-child-vehicle
+                     :model "Escort"))
+             (text
               {:xpath "//div[@id='vehicles']//table/tbody/tr[position()=3]"})))
       ;; account managers can assign users to vehicles
-      ;; this won't work for now
-      )
-    (testing "Child account can't add vehicle"
+      (wait-until
+       #(exists?
+         {:xpath
+          "//div[@id='vehicles']//table/tbody/tr[position()=3]/td[last()]/a"}))
+      (click
+       {:xpath
+        "//div[@id='vehicles']//table/tbody/tr[position()=3]/td[last()]/a"})
+      (wait-until #(exists? portal/vehicle-form-save))
+      (portal/fill-vehicle-form (assoc second-child-vehicle
+                                       :user "Foo Bar"))
+      (click portal/vehicle-form-save)
+      (wait-until #(exists? portal/vehicle-form-yes))
+      (click portal/vehicle-form-yes)
+      (wait-until
+       #(exists?
+         portal/add-vehicle-button))
+      (is (= (portal/vehicle-map->vehicle-table-row
+              (assoc second-child-vehicle
+                     :user "Foo Bar"))
+             (text
+              {:xpath "//div[@id='vehicles']//table/tbody/tr[position()=3]"}))))
+    (testing "Child account can't add or edit vehicles"
       ;; users not shown for account-children
       (portal/logout-portal)
       (selenium/go-to-uri "login")
@@ -935,6 +989,12 @@
       (click portal/vehicles-link)
       (wait-until #(exists? portal/vehicles-table))
       (is (not (exists? portal/add-vehicle-button)))
+      ;; child user don't have an edit vehicle button
+      (is
+       (not
+        (exists?
+         {:xpath
+          "//div[@id='vehicles']//table/tbody/tr[position()=3]/td[last()]/a"})))
       ;; child users can see the vehicle they are assigned to
       (wait-until #(exists?
                     {:xpath
