@@ -396,7 +396,45 @@
                 (assoc third-vehicle
                        :model "Escort"))
                (text
-                {:xpath "//div[@id='vehicles']//table/tbody/tr[position()=3]"}))
-            )
-        )
+                {:xpath "//div[@id='vehicles']//table/tbody/tr[position()=3]"})))
+        ;; just change the octane
+        (wait-until
+         #(exists?
+           {:xpath
+            "//div[@id='vehicles']//table/tbody/tr[position()=1]/td[last()]/a"}))
+        (click
+         {:xpath
+          "//div[@id='vehicles']//table/tbody/tr[position()=1]/td[last()]/a"})
+        (wait-until #(exists? vehicle-form-save))
+        (select-by-text vehicle-form-fuel-type "87 Octane")
+        (click vehicle-form-save)
+        (wait-until #(exists? vehicle-form-yes))
+        (click vehicle-form-yes)
+        (wait-until #(exists? add-vehicle-button))
+        (is (= (vehicle-map->vehicle-table-row
+                (assoc first-vehicle
+                       :fuel-type "87 Octane"))
+               (text
+                {:xpath "//div[@id='vehicles']//table/tbody/tr[position()=1]"}))))
+      ;; just change the only top tier gas fuel type
+      (wait-until
+       #(exists?
+         {:xpath
+          "//div[@id='vehicles']//table/tbody/tr[position()=1]/td[last()]/a"}))
+      (click
+       {:xpath
+        "//div[@id='vehicles']//table/tbody/tr[position()=1]/td[last()]/a"})
+      (wait-until #(exists? vehicle-form-save))
+      (select-checkbox vehicle-form-only-top-tier-gas? true)
+      (click vehicle-form-save)
+      (wait-until #(exists? vehicle-form-yes))
+      (click vehicle-form-yes)
+      (wait-until #(exists? add-vehicle-button))
+      (is (= (vehicle-map->vehicle-table-row
+              (assoc first-vehicle
+                     :fuel-type "87 Octane"
+                     :only-top-tier-gas? true))
+             (text
+              {:xpath "//div[@id='vehicles']//table/tbody/tr[position()=1]"})))
+
       )))
