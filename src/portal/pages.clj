@@ -79,7 +79,12 @@
                     [:link {:rel "stylesheet"
                             :type "text/css"
                             :href (str config/base-url
-                                       "css/font-awesome.min.css")}])))
+                                       "css/font-awesome.min.css")}]))
+           (append (html
+                    [:link {:rel "stylesheet"
+                            :type "text/css"
+                            :href (str config/base-url
+                                       "css/react-select.min.css")}])))
 
   [:#base-url] (set-attr :value (str (:base-url x)))
 
