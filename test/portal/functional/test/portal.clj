@@ -22,7 +22,6 @@
 ;; -- run more tests
 ;; (selenium/shutdown-test-env!
 
-
 ;; common elements
 (def logout-lg-xpath
   {:xpath "//ul/li[contains(@class,'hidden-lg')]//a[text()='LOG OUT']"})
@@ -34,8 +33,10 @@
 (def vehicles-link {:xpath "//li/a/div[text()='VEHICLES']"})
 (def add-vehicle-button {:xpath "//div[@id='vehicles']//button[text()=' Add']"})
 ;; vehicle form
-(def vehicle-form-make {:xpath "//div[@id='vehicles']//form//input[@placeholder='Make']"})
-(def vehicle-form-model {:xpath "//div[@id='vehicles']//form//input[@placeholder='Model']"})
+(def vehicle-form-make
+  {:xpath "//div[@id='vehicles']//form//input[@aria-labelledby='Make']"})
+(def vehicle-form-model
+  {:xpath "//div[@id='vehicles']//form//input[@aria-labelledby='Model']"})
 (def vehicle-form-year {:xpath "//div[@id='vehicles']//form//input[@placeholder='Year']"})
 (def vehicle-form-color {:xpath "//div[@id='vehicles']//form//input[@placeholder='Color']"})
 (def vehicle-form-license-plate
@@ -227,9 +228,9 @@
          only-top-tier-gas? true
          user nil}}]
   (clear vehicle-form-make)
-  (input-text vehicle-form-make make)
+  (input-text vehicle-form-make (str make "\n"))
   (clear vehicle-form-model)
-  (input-text vehicle-form-model model)
+  (input-text vehicle-form-model (str model "\n"))
   (clear vehicle-form-year)
   (input-text vehicle-form-year year)
   (clear vehicle-form-color)
@@ -317,8 +318,8 @@
               {:xpath "//div[@id='vehicles']//table/tbody/tr[position()=1]"})))
       ;; add another vehicle, but with errors
       (create-vehicle (assoc second-vehicle
-                             :make ""
-                             :model ""))
+                             :make " "
+                             :model " "))
       (wait-until #(exists? vehicle-form-save))
       ;; check that there are error messages
       (is (= "You must assign a make to this vehicle!"
@@ -395,5 +396,7 @@
                 (assoc third-vehicle
                        :model "Escort"))
                (text
-                {:xpath "//div[@id='vehicles']//table/tbody/tr[position()=3]"})))
-        ))))
+                {:xpath "//div[@id='vehicles']//table/tbody/tr[position()=3]"}))
+            )
+        )
+      )))

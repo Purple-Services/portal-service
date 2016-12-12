@@ -219,3 +219,23 @@ thead > tr > .fake-link {
     color: #68618C;
     text-transform: uppercase;
 }
+
+/* styling for autocomplete */
+
+.Select-placeholder {
+    font-family: Hind,Verdana,Arial,'sans-serif' !important;
+    font-size: 16px;
+    font-weight: bolder;
+}
+
+.Select-value {
+    font-family: Hind,Verdana,Arial,'sans-serif' !important;
+    font-size: 16px;
+    font-weight: bolder;
+}
+
+.Select-menu-outer {
+    font-family: Hind,Verdana,Arial,'sans-serif' !important;
+    font-size: 16px;
+    font-weight: bolder;
+}
