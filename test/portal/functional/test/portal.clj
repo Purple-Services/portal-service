@@ -179,6 +179,7 @@
             (is (string/blank?
                  (value (find-element password-xpath))))
             (input-text (find-element password-xpath) too-short)
+            (wait-until #(exists? confirm-password-xpath))
             (clear (find-element confirm-password-xpath))
             (wait-until #(string/blank?
                           (value (find-element confirm-password-xpath))))

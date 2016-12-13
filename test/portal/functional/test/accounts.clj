@@ -994,4 +994,30 @@
                      "//div[@id='vehicles']//table/tbody/tr[position()=1]"}))
       (is (= (portal/vehicle-map->vehicle-str (dissoc first-child-vehicle
                                                       :user))
-             (portal/vehicle-table-row->vehicle-str 1))))))
+             (portal/vehicle-table-row->vehicle-str 1))))
+    (testing "Account managers can activate and reactivate vehicles"
+      ;; login manager
+      (selenium/go-to-uri "login")
+      (selenium/login-portal manager-email manager-password)
+      (wait-until #(exists? portal/vehicles-link))
+      ;; click on the vehicle tab
+      (click portal/vehicles-link)
+      (wait-until #(exists? portal/add-vehicle-button))
+      ;; check that row count of the active table matches the count in the
+      ;; active filter
+      (portal/compare-active-vehicles-table-and-filter-buttons)
+      ;; check that row count of the deactivated table matches count in the
+      ;; deactivated filter
+      (portal/compare-deactivated-vehicles-table-and-filter-buttons)
+      ;; deactivate the first vehicle
+      (portal/deactivate-vehicle-and-check 1 2)
+      ;; deactivate the second vehicle
+      (portal/deactivate-vehicle-and-check 1 1)
+      ;; deactivate the third vehicle
+      (portal/deactivate-vehicle-and-check 1 0)
+      ;; reactivate the first vehicle
+      (portal/activate-vehicle-and-check 1 2)
+      ;; reactivate the second vehicle
+      (portal/activate-vehicle-and-check 1 1)
+      ;; reactive the third vehicle
+      (portal/activate-vehicle-and-check 1 0))))
