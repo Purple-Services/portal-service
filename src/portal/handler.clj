@@ -137,6 +137,21 @@
         vehicle-id (nth reg-match 3)]
     (accounts/account-can-view-vehicle? account-id vehicle-id)))
 
+(defn user-is-editable-by-account?
+  "Given a route of
+  /account/<account-id>/manager/<manager-id>/edit-user, check
+  that the manager can edit the user"
+  [request]
+  (let [uri (:uri request)
+        body (:body request)
+        json-body (keywordize-keys body)
+        json-user-id (:id json-body)
+        reg-match (re-matches
+                   #"/account/([a-zA-Z0-9]{20})/manager/([a-zA-Z0-9]{20})/edit-user"
+                   uri)
+        account-id (second reg-match)
+        manager-id (nth reg-match 2)]
+    (accounts/account-can-edit-user? account-id json-user-id)))
 
 (defn on-error
   [request value]
@@ -221,6 +236,13 @@
                               vehicle-user-id-valid-for-manager?
                               (re-pattern
                                "/account/([a-zA-Z0-9]{20})/manager/([a-zA-Z0-9]{20})/edit-vehicle"))
+                             manager-id-manages-account?) %))
+    :on-error on-error}
+   {:pattern #"/account/.*/manager/.*/edit-user"
+    :handler #(every? true?
+                      ((juxt manager-id-matches-cookies?
+                             valid-session-wrapper?
+                             user-is-editable-by-account?
                              manager-id-manages-account?) %))
     :on-error on-error}
    {:pattern #"/account/.*/manager/.*/vehicle/.*"
@@ -331,6 +353,10 @@
            (GET "/user/:user-id" [user-id]
                 (response
                  (users/get-user user-id)))
+           (PUT "/user" {body :body}
+                (response
+                 (let [user (keywordize-keys body)]
+                   (accounts/edit-user! account-id user))))
            (GET "/users" []
                 (response
                  (accounts/account-users account-id)))
