@@ -734,8 +734,8 @@
                                     (t/formatter "M/d/yyyy"))}}]
   (string/join " " (filterv (comp not string/blank?)
                             [name email phone-number (if manager?
-                                                            "Yes"
-                                                            "No") created])))
+                                                       "Yes"
+                                                       "No") created])))
 
 (defn create-user
   [{:keys [email name]}]

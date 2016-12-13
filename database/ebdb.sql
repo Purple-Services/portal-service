@@ -154,10 +154,11 @@ CREATE TABLE `account_children` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `account_id` varchar(255) NOT NULL,
   `user_id` varchar(255) NOT NULL,
+  `active` tinyint(1) NOT NULL DEFAULT '1',
   PRIMARY KEY (`id`),
   KEY `idx_account_children_account_id` (`account_id`),
   KEY `idx_account_children_user_id` (`user_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -174,7 +175,7 @@ CREATE TABLE `account_managers` (
   PRIMARY KEY (`id`),
   KEY `idx_account_managers_user_id` (`user_id`),
   KEY `idx_account_managers_account_id` (`account_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -189,6 +190,22 @@ CREATE TABLE `accounts` (
   `name` varchar(255) DEFAULT 'Usually a business name',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `api_keys`
+--
+
+DROP TABLE IF EXISTS `api_keys`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `api_keys` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `account_id` varchar(255) NOT NULL,
+  `api_key` varchar(255) NOT NULL,
+  `active` tinyint(1) NOT NULL DEFAULT '1',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -355,7 +372,8 @@ CREATE TABLE `orders` (
   `license_plate` varchar(255) NOT NULL DEFAULT '' COMMENT 'license plate of the vehicle at the time the order was made',
   `target_time_start` int(11) NOT NULL DEFAULT '0',
   `target_time_end` int(11) NOT NULL DEFAULT '0',
-  `gallons` double NOT NULL DEFAULT '0',
+  `gallons` double DEFAULT NULL,
+  `is_fillup` tinyint(1) NOT NULL DEFAULT '0',
   `gas_type` varchar(255) NOT NULL DEFAULT '',
   `is_top_tier` tinyint(1) NOT NULL DEFAULT '1',
   `tire_pressure_check` tinyint(1) NOT NULL DEFAULT '0',
@@ -400,13 +418,15 @@ DROP TABLE IF EXISTS `sessions`;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `sessions` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
+  `active` tinyint(1) NOT NULL DEFAULT '1',
   `user_id` varchar(255) NOT NULL,
   `token` varchar(255) NOT NULL,
   `ip` varchar(100) NOT NULL,
   `source` varchar(100) DEFAULT '',
   `timestamp_created` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `api_key_id` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=2943 DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB AUTO_INCREMENT=1023251 DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -738,4 +758,4 @@ CREATE TABLE `zones` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2016-11-14 12:19:43
+-- Dump completed on 2016-12-13 15:34:59

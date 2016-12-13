@@ -33,7 +33,12 @@
 
 ;; if you want to use different pools, do a
 ;; (set-new-db-pool! <config-file>)
-
+;; be sure to run it again after connecting to the remote dev
+;; database so that you are sure to close the connection
+;; ex:
+;; (set-new-db-pool! remote-ebdb-dev-config)
+;; ... run some code
+;; (set-new-db-pool! ebdb-test-config)
 (def local-ebdb-dev-config
   "Configuration map for connecting to the local dev database."
   (ebdb-config {:db-host     (env :test-db-host)
@@ -56,8 +61,7 @@
   (let [sql-lines (->
                    (slurp filename) ; read in the sql file
                    (clojure.string/replace #"--.*\n" "") ; ignore sql comments
-                   (clojure.string/split #";\n") ; sepereate chunks into
-                                                 ; statements
+                   (clojure.string/split #";\n") ; sepereate into statements
                    )]
     (->> sql-lines
          (map #(clojure.string/replace % #"\n" ""))
