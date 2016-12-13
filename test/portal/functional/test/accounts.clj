@@ -855,8 +855,7 @@
                :email child-email
                :manager? false
                :created (user-creation-date child-email)})
-             (text
-              {:xpath "//div[@id='users']//table/tbody/tr[position()=1]"})))
+             (text {:xpath "//div[@id='users']//table/tbody/tr[position()=1]"})))
       ;; add a second child user
       (create-user {:email second-child-email
                     :full-name second-child-full-name})
@@ -871,8 +870,8 @@
                :email second-child-email
                :manager? false
                :created (user-creation-date second-child-email)})
-             (text
-              {:xpath "//div[@id='users']//table/tbody/tr[position()=2]"})))
+             (text {:xpath
+                    "//div[@id='users']//table/tbody/tr[position()=2]"})))
       ;; add a third child user
       (create-user {:email third-child-email
                     :full-name third-child-full-name})
@@ -887,8 +886,8 @@
                :email third-child-email
                :manager? false
                :created (user-creation-date third-child-email)})
-             (text
-              {:xpath "//div[@id='users']//table/tbody/tr[position()=3]"}))))
+             (text {:xpath
+                    "//div[@id='users']//table/tbody/tr[position()=3]"}))))
     (testing "Manager adds vehicles"
       (click portal/vehicles-link)
       (wait-until #(exists? portal/no-vehicles-message))
@@ -897,34 +896,31 @@
       (wait-until #(exists?
                     {:xpath
                      "//div[@id='vehicles']//table/tbody/tr[position()=1]"}))
-      (is (= (portal/vehicle-map->vehicle-table-row manager-vehicle)
-             (text
-              {:xpath "//div[@id='vehicles']//table/tbody/tr[position()=1]"})))
+      (is (= (portal/vehicle-map->vehicle-str manager-vehicle)
+             (portal/vehicle-table-row->vehicle-str 1)))
       ;; add another vehicle
       (portal/create-vehicle first-child-vehicle)
       (wait-until #(exists?
                     {:xpath
                      "//div[@id='vehicles']//table/tbody/tr[position()=2]"}))
-      (is (= (portal/vehicle-map->vehicle-table-row first-child-vehicle)
-             (text
-              {:xpath "//div[@id='vehicles']//table/tbody/tr[position()=2]"})))
+      (is (= (portal/vehicle-map->vehicle-str first-child-vehicle)
+             (portal/vehicle-table-row->vehicle-str 2)))
       ;; add the third vehicle
       (portal/create-vehicle second-child-vehicle)
       (wait-until #(exists?
                     {:xpath
                      "//div[@id='vehicles']//table/tbody/tr[position()=3]"}))
-      (is (= (portal/vehicle-map->vehicle-table-row second-child-vehicle)
-             (text
-              {:xpath "//div[@id='vehicles']//table/tbody/tr[position()=3]"}))))
+      (is (= (portal/vehicle-map->vehicle-str second-child-vehicle)
+             (portal/vehicle-table-row->vehicle-str 3))))
     (testing "Manager can edit vehicle"
       ;; account managers edit vehicles error check
       (wait-until
        #(exists?
          {:xpath
-          "//div[@id='vehicles']//table/tbody/tr[position()=3]/td[last()]/a"}))
+          "//div[@id='vehicles']//table/tbody/tr[position()=3]/td[last()]/div/a[position()=1]"}))
       (click
        {:xpath
-        "//div[@id='vehicles']//table/tbody/tr[position()=3]/td[last()]/a"})
+        "//div[@id='vehicles']//table/tbody/tr[position()=3]/td[last()]/div/a[position()=1]"})
       (wait-until #(exists? portal/vehicle-form-make))
       (portal/fill-vehicle-form (assoc second-child-vehicle
                                        :make " "
@@ -945,19 +941,18 @@
       (wait-until
        #(exists?
          portal/add-vehicle-button))
-      (is (= (portal/vehicle-map->vehicle-table-row
+      (is (= (portal/vehicle-map->vehicle-str
               (assoc second-child-vehicle
                      :model "Escort"))
-             (text
-              {:xpath "//div[@id='vehicles']//table/tbody/tr[position()=3]"})))
+             (portal/vehicle-table-row->vehicle-str 3)))
       ;; account managers can assign users to vehicles
       (wait-until
        #(exists?
          {:xpath
-          "//div[@id='vehicles']//table/tbody/tr[position()=3]/td[last()]/a"}))
+          "//div[@id='vehicles']//table/tbody/tr[position()=3]/td[last()]/div/a[position()=1]"}))
       (click
        {:xpath
-        "//div[@id='vehicles']//table/tbody/tr[position()=3]/td[last()]/a"})
+        "//div[@id='vehicles']//table/tbody/tr[position()=3]/td[last()]/div/a[position()=1]"})
       (wait-until #(exists? portal/vehicle-form-save))
       (portal/fill-vehicle-form (assoc second-child-vehicle
                                        :user "Foo Bar"))
@@ -967,11 +962,10 @@
       (wait-until
        #(exists?
          portal/add-vehicle-button))
-      (is (= (portal/vehicle-map->vehicle-table-row
+      (is (= (portal/vehicle-map->vehicle-str
               (assoc second-child-vehicle
                      :user "Foo Bar"))
-             (text
-              {:xpath "//div[@id='vehicles']//table/tbody/tr[position()=3]"}))))
+             (portal/vehicle-table-row->vehicle-str 3))))
     (testing "Child account can't add or edit vehicles"
       ;; users not shown for account-children
       (portal/logout-portal)
@@ -993,13 +987,11 @@
        (not
         (exists?
          {:xpath
-          "//div[@id='vehicles']//table/tbody/tr[position()=3]/td[last()]/a"})))
+          "//div[@id='vehicles']//table/tbody/tr[position()=3]/td[last()]/div/a[position()=1]"})))
       ;; child users can see the vehicle they are assigned to
       (wait-until #(exists?
                     {:xpath
                      "//div[@id='vehicles']//table/tbody/tr[position()=1]"}))
-      (is (= (portal/vehicle-map->vehicle-table-row (dissoc first-child-vehicle
-                                                            :user))
-             (text
-              {:xpath "//div[@id='vehicles']//table/tbody/tr[position()=1]"}))))
-    ))
+      (is (= (portal/vehicle-map->vehicle-str (dissoc first-child-vehicle
+                                                      :user))
+             (portal/vehicle-table-row->vehicle-str 1))))))

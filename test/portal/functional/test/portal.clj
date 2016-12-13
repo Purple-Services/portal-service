@@ -252,7 +252,7 @@
   (wait-until #(exists? vehicle-form-yes))
   (click vehicle-form-yes))
 
-(defn vehicle-map->vehicle-table-row
+(defn vehicle-map->vehicle-str
   [{:keys [make model year color license-plate fuel-type only-top-tier-gas?
            user]}]
   (string/join " " (filterv (comp not string/blank?)
@@ -260,6 +260,32 @@
                              (if only-top-tier-gas?
                                "Yes"
                                "No") user])))
+
+(defn vehicle-table-row->vehicle-str
+  "Convert the row at position to a vehicle str"
+  [position]
+  (let [row-col (fn [col]
+                  (str "//div[@id='vehicles']//table/tbody/tr[position()="
+                       position "]/td[position()=" col "]"))
+        manager-vehicle-table?
+        (boolean
+         (= (count
+             (find-elements
+              {:xpath (str "//div[@id='vehicles']//table/tbody/tr[position()="
+                           position "]/td")}))
+            9))
+        make (text {:xpath (row-col 1)})
+        model (text {:xpath (row-col 2)})
+        color (text {:xpath (row-col 3)})
+        year (text {:xpath (row-col 4)})
+        license-plate (text {:xpath (row-col 5)})
+        fuel-type (text {:xpath (row-col 6)})
+        top-tier-only? (text {:xpath (row-col 7)})
+        user (when manager-vehicle-table?
+               (text {:xpath (row-col 8)}))]
+    (string/join " " (filterv (comp not string/blank?)
+                              [make model color year license-plate fuel-type
+                               top-tier-only? user]))))
 
 (deftest selenium-regular-user
   (let [email "foo@bar.com"
@@ -312,10 +338,9 @@
               (find-elements
                {:xpath "//div[@id='vehicles']//table/tbody/tr"}))))
       ;; the first row should correspond to the first-vehicle
-      (is (= (vehicle-map->vehicle-table-row
+      (is (= (vehicle-map->vehicle-str
               first-vehicle)
-             (text
-              {:xpath "//div[@id='vehicles']//table/tbody/tr[position()=1]"})))
+             (vehicle-table-row->vehicle-str 1)))
       ;; add another vehicle, but with errors
       (create-vehicle (assoc second-vehicle
                              :make " "
@@ -340,10 +365,9 @@
               (find-elements
                {:xpath "//div[@id='vehicles']//table/tbody/tr"}))))
       ;; the second row should correspond to the second-vehicle
-      (is (= (vehicle-map->vehicle-table-row
+      (is (= (vehicle-map->vehicle-str
               second-vehicle)
-             (text
-              {:xpath "//div[@id='vehicles']//table/tbody/tr[position()=2]"})))
+             (vehicle-table-row->vehicle-str 2)))
       ;; 1 and 2 items is trivial, check that 3 work
       ;; add another vehicle
       (create-vehicle  third-vehicle)
@@ -358,19 +382,18 @@
               (find-elements
                {:xpath "//div[@id='vehicles']//table/tbody/tr"}))))
       ;; the second row should correspond to the second-vehicle
-      (is (= (vehicle-map->vehicle-table-row
+      (is (= (vehicle-map->vehicle-str
               third-vehicle)
-             (text
-              {:xpath "//div[@id='vehicles']//table/tbody/tr[position()=3]"})))
+             (vehicle-table-row->vehicle-str 3)))
       (testing "A normal user can edit vehicles"
         ;; a vehicle with errors is saved, proper error messages
         (wait-until
          #(exists?
            {:xpath
-            "//div[@id='vehicles']//table/tbody/tr[position()=3]/td[last()]/a"}))
+            "//div[@id='vehicles']//table/tbody/tr[position()=3]/td[last()]/div/a[position()=1]"}))
         (click
          {:xpath
-          "//div[@id='vehicles']//table/tbody/tr[position()=3]/td[last()]/a"})
+          "//div[@id='vehicles']//table/tbody/tr[position()=3]/td[last()]/div/a[position()=1]"})
         (wait-until #(exists? vehicle-form-make))
         (fill-vehicle-form (assoc third-vehicle
                                   :make " "
@@ -392,49 +415,44 @@
         (wait-until
          #(exists?
            add-vehicle-button))
-        (is (= (vehicle-map->vehicle-table-row
+        (is (= (vehicle-map->vehicle-str
                 (assoc third-vehicle
                        :model "Escort"))
-               (text
-                {:xpath "//div[@id='vehicles']//table/tbody/tr[position()=3]"})))
+               (vehicle-table-row->vehicle-str 3)))
         ;; just change the octane
         (wait-until
          #(exists?
            {:xpath
-            "//div[@id='vehicles']//table/tbody/tr[position()=1]/td[last()]/a"}))
+            "//div[@id='vehicles']//table/tbody/tr[position()=1]/td[last()]/div/a[position()=1]"}))
         (click
          {:xpath
-          "//div[@id='vehicles']//table/tbody/tr[position()=1]/td[last()]/a"})
+          "//div[@id='vehicles']//table/tbody/tr[position()=1]/td[last()]/div/a[position()=1]"})
         (wait-until #(exists? vehicle-form-save))
         (select-by-text vehicle-form-fuel-type "87 Octane")
         (click vehicle-form-save)
         (wait-until #(exists? vehicle-form-yes))
         (click vehicle-form-yes)
         (wait-until #(exists? add-vehicle-button))
-        (is (= (vehicle-map->vehicle-table-row
+        (is (= (vehicle-map->vehicle-str
                 (assoc first-vehicle
                        :fuel-type "87 Octane"))
-               (text
-                {:xpath "//div[@id='vehicles']//table/tbody/tr[position()=1]"}))))
+               (vehicle-table-row->vehicle-str 1))))
       ;; just change the only top tier gas fuel type
       (wait-until
        #(exists?
          {:xpath
-          "//div[@id='vehicles']//table/tbody/tr[position()=1]/td[last()]/a"}))
+          "//div[@id='vehicles']//table/tbody/tr[position()=1]/td[last()]/div/a[position()=1]"}))
       (click
        {:xpath
-        "//div[@id='vehicles']//table/tbody/tr[position()=1]/td[last()]/a"})
+        "//div[@id='vehicles']//table/tbody/tr[position()=1]/td[last()]/div/a[position()=1]"})
       (wait-until #(exists? vehicle-form-save))
       (select-checkbox vehicle-form-only-top-tier-gas? true)
       (click vehicle-form-save)
       (wait-until #(exists? vehicle-form-yes))
       (click vehicle-form-yes)
       (wait-until #(exists? add-vehicle-button))
-      (is (= (vehicle-map->vehicle-table-row
+      (is (= (vehicle-map->vehicle-str
               (assoc first-vehicle
                      :fuel-type "87 Octane"
                      :only-top-tier-gas? true))
-             (text
-              {:xpath "//div[@id='vehicles']//table/tbody/tr[position()=1]"})))
-
-      )))
+             (vehicle-table-row->vehicle-str 1))))))
