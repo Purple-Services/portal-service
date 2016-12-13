@@ -22,11 +22,27 @@
   [id]
   (boolean (db/!select (db/conn) "account_managers" [:id] {:user_id id})))
 
+
 (defn is-child-account?
   "Given an id, determine if the user is a child account manager"
   [id]
   (boolean (db/!select (db/conn) "account_children" [:id]
                        {:user_id id})))
+
+(defn is-active?
+  "Given an id, determine if the user is active"
+  [id]
+  ;; currently assumes everyone is active, except if they
+  ;; are a child account that is not active
+  (let [select-result  (db/!select (db/conn) "account_children"
+                                   [:id :active]
+                                   {:user_id id})]
+    (cond (empty? select-result)
+          true
+          (not (:active (first select-result)))
+          false
+          :else
+          true)))
 
 (defn manages-account?
   "Given an user-id and account-id, determine if they really do manage that
@@ -67,7 +83,7 @@
   [platform-id]
   (not (boolean (get-user-by-email platform-id))))
 
-(def child-account-validations
+(def new-child-account-validations
   {:email [[platform-id-available?
             :message "Email address is already in use."]
            [v/required :message "Email can not be blank!"]]
@@ -85,7 +101,8 @@
          (if (= (:pending user) 1)
            true
            false)
-         :is-manager (is-account-manager? (:id user))))
+         :is-manager (is-account-manager? (:id user))
+         :active (is-active? (:id user))))
 
 (def users-select
   (str "users.name, users.email, users.phone_number, users.timestamp_created, "

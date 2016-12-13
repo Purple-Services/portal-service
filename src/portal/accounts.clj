@@ -77,15 +77,16 @@
   [user-id account-id]
   (db/!insert (db/conn) "account_children"
               {:user_id user-id
-               :account_id account-id}))
+               :account_id account-id
+               :active true}))
 
 (defn create-child-account!
   "Create a new child account"
   [account-id new-user]
   ;; make sure this user actually manages the account
-  (cond (not (b/valid? new-user users/child-account-validations))
+  (cond (not (b/valid? new-user users/new-child-account-validations))
         {:success false
-         :validation (b/validate new-user users/child-account-validations)}
+         :validation (b/validate new-user users/new-child-account-validations)}
         :else
         (let [{:keys [email name]} new-user
               new-user-id (util/rand-str-alpha-num 20)
