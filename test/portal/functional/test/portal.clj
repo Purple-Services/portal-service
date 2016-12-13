@@ -1,5 +1,6 @@
 (ns portal.functional.test.portal
   (:require [clj-webdriver.taxi :refer :all]
+            [clojure.edn :as edn]
             [clojure.string :as string]
             [clojure.test :refer [deftest is testing use-fixtures run-tests]]
             [common.db :as db]
@@ -59,7 +60,12 @@
   {:xpath "//div[@id='vehicles']//table"})
 (def no-vehicles-message
   {:xpath "//h3[text()='No orders currently associated with account']"})
+(def active-vehicles-filter
+  {:xpath "//div[@id='vehicles']//button[contains(text(),'Active')]"})
+(def deactivated-vehicles-filter
+  {:xpath "//div[@id='vehicles']//button[contains(text(),'Deactivated')]"})
 
+;; orders
 (def no-orders-message
   {:xpath "//h3[text()='No orders currently associated with account']"})
 
@@ -286,6 +292,89 @@
     (string/join " " (filterv (comp not string/blank?)
                               [make model color year license-plate fuel-type
                                top-tier-only? user]))))
+(defn active-vehicles-filter-count
+  []
+  (edn/read-string (second (re-matches #".*\(([0-9]*)\)"
+                                       (text active-vehicles-filter)))))
+
+(defn deactivated-vehicles-filter-count
+  []
+  (edn/read-string (second (re-matches #".*\(([0-9]*)\)"
+                                       (text deactivated-vehicles-filter)))))
+
+(defn vehicles-table-count
+  []
+  (count (find-elements {:xpath "//div[@id='vehicles']//table/tbody/tr"})))
+
+(defn deactivate-vehicle-at-position
+  [position]
+  (let [deactivate-link {:xpath
+                         (str "//div[@id='vehicles']//table/tbody/tr[position()"
+                              "=" position "]/td[last()]/div/a[position()=2]")}]
+    (click active-vehicles-filter)
+    (wait-until #(= (active-vehicles-filter-count)
+                    (vehicles-table-count)))
+    (wait-until #(exists? deactivate-link))
+    (click deactivate-link)))
+
+(defn activate-vehicle-at-position
+  [position]
+  (let [activate-link {:xpath
+                       (str "//div[@id='vehicles']//table/tbody/tr[position()"
+                            "=" position "]/td[last()]/div/a[position()=2]")}]
+    (click deactivated-vehicles-filter)
+    (wait-until #(= (deactivated-vehicles-filter-count)
+                    (vehicles-table-count)))
+    (wait-until #(exists? activate-link))
+    (click activate-link)))
+
+(defn compare-active-vehicles-table-and-filter-buttons
+  []
+  (wait-until #(exists? active-vehicles-filter))
+  (click active-vehicles-filter)
+  (wait-until #(= (active-vehicles-filter-count)
+                  (vehicles-table-count)))
+  (is (= (active-vehicles-filter-count)
+         (vehicles-table-count))))
+
+(defn compare-deactivated-vehicles-table-and-filter-buttons
+  []
+  (wait-until #(exists? deactivated-vehicles-filter))
+  (click deactivated-vehicles-filter)
+  (wait-until #(= (deactivated-vehicles-filter-count)
+                  (vehicles-table-count)))
+  (is (= (deactivated-vehicles-filter-count)
+         (vehicles-table-count))))
+
+(defn count-in-active-vehicles-filter-correct?
+  [n]
+  (wait-until #(= (active-vehicles-filter-count)
+                  n))
+  (is (= n
+         (active-vehicles-filter-count))))
+
+(defn count-in-deactivated-vehicles-filter-correct?
+  [n]
+  (wait-until #(= (deactivated-vehicles-filter-count)
+                  n))
+  (is (= n
+         (deactivated-vehicles-filter-count))))
+
+(defn deactivate-vehicle-and-check
+  [position new-count]
+  (deactivate-vehicle-at-position position)
+  ;; check that the counts are correct
+  (count-in-active-vehicles-filter-correct? new-count)
+  (compare-active-vehicles-table-and-filter-buttons)
+  (compare-deactivated-vehicles-table-and-filter-buttons))
+
+(defn activate-vehicle-and-check
+  [position new-count]
+  (activate-vehicle-at-position position)
+  ;; check that the counts are correct
+  (count-in-deactivated-vehicles-filter-correct? new-count)
+  (compare-active-vehicles-table-and-filter-buttons)
+  (compare-deactivated-vehicles-table-and-filter-buttons))
 
 (deftest selenium-regular-user
   (let [email "foo@bar.com"
@@ -455,4 +544,23 @@
               (assoc first-vehicle
                      :fuel-type "87 Octane"
                      :only-top-tier-gas? true))
-             (vehicle-table-row->vehicle-str 1))))))
+             (vehicle-table-row->vehicle-str 1))))
+    (testing "A user can deactivate and activate their vehicles"
+      ;; check that row count of the active table matches the count in the
+      ;; active filter
+      (compare-active-vehicles-table-and-filter-buttons)
+      ;; check that row count of the deactivated table matches count in the
+      ;; deactivated filter
+      (compare-deactivated-vehicles-table-and-filter-buttons)
+      ;; deactivate the first vehicle
+      (deactivate-vehicle-and-check 1 2)
+      ;; deactivate the second vehicle
+      (deactivate-vehicle-and-check 1 1)
+      ;; deactivate the third vehicle
+      (deactivate-vehicle-and-check 1 0)
+      ;; reactivate the first vehicle
+      (activate-vehicle-and-check 1 2)
+      ;; reactivate the second vehicle
+      (activate-vehicle-and-check 1 1)
+      ;; reactive the third vehicle
+      (activate-vehicle-and-check 1 0))))
