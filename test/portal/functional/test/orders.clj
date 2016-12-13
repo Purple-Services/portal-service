@@ -101,6 +101,16 @@
   (is (:success (db/!insert (db/conn) "orders"
                             order))))
 
+;; useful for adding vehicles to dev db
+(defn add-order-to-email-first-vehicle!
+  "Given an email, add an order using their first vehicle"
+  [email]
+  (let [user-id  (:id (login/get-user-by-email email))
+        user-vehicle (first (vehicles/user-vehicles user-id))
+        order (order-map {:user_id user-id
+                          :vehicle_id (:id user-vehicle)})]
+    (create-order! order)))
+
 (deftest orders
   (let [email "foo@bar.com"
         password "foobar"
