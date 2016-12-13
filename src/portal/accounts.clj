@@ -49,6 +49,14 @@
     (boolean (not (empty?
                    (filter #(= user-id (:id %)) users))))))
 
+(defn account-can-edit-user?
+  [account-id user-id]
+  (let [account-children (raw-sql-query
+                          (db/conn)
+                          [(account-children-sql account-id)])]
+    (boolean (not (empty?
+                   (filter #(= user-id (:id %)) account-children))))))
+
 (defn get-account-by-name
   "Given an account name, return the id associated with that account"
   [account-name]
@@ -79,6 +87,24 @@
               {:user_id user-id
                :account_id account-id
                :active true}))
+
+(defn activate-child-account!
+  "Given a user-id and account-id, activate the user as a child of
+  account"
+  [user-id account-id]
+  (db/!update (db/conn) "account_children"
+              {:user_id user-id
+               :account_id account-id
+               :active true}))
+
+(defn deactivate-child-account!
+  "Given a user-id and account-id, deactivate the user as a child of
+  account"
+  [user-id account-id]
+  (db/!update (db/conn) "account_children"
+              {:user_id user-id
+               :account_id account-id
+               :active false}))
 
 (defn create-child-account!
   "Create a new child account"
@@ -118,6 +144,37 @@
                  reset-key)})
           {:success true
            :id new-user-id})))
+
+(defn edit-user!
+  "Edit a user. Only child accounts can be edited at this point"
+  [account-id user]
+  (if (b/valid? user users/child-account-validations)
+    (let [db-user (users/get-user (:id user))
+          user-id (:id (db-user))]
+      (cond
+        ;; we're not going to allow for the editing
+        ;; AND activation of a user, if active has changed
+        ;; that is all that will change
+        (not= (:active user) (:active db-user))
+        (do (if (:active user)
+              (activate-child-account! user-id account-id)
+              (deactivate-child-account! user-id account-id))
+            {:success true
+             :id user-id})
+        :else
+        (let [update-user-result (db/!update
+                                  (db/conn)
+                                  "users"
+                                  (select-keys
+                                   user [:name :phone_number :email])
+                                  {:id user-id})]
+          (if (:success update-user-result)
+            (assoc update-user-result :id user-id)
+            {:success false
+             :message "There was an error when modifying this user"}))))
+    ;; send error message
+    {:success false
+     :validation (b/validate user users/child-account-validations)}))
 
 (defn account-vehicles-sql
   [account-id]

@@ -89,6 +89,14 @@
            [v/required :message "Email can not be blank!"]]
    :name [[v/required :message "Name can not be blank!"]]})
 
+(def child-account-validations
+  (assoc new-child-account-validations
+         :id
+         [[(comp not s/blank?)
+           :message "You must specify the id of the user!"]]
+         :active [[v/required
+                   :message "You must specify the active status of the user!"]]))
+
 (defn process-user
   "Process a user to be included as a JSON response"
   [user]
