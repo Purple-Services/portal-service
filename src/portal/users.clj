@@ -71,7 +71,7 @@
   {:email [[platform-id-available?
             :message "Email address is already in use."]
            [v/required :message "Email can not be blank!"]]
-   :full-name [[v/required :message "Name can not be blank!"]]})
+   :name [[v/required :message "Name can not be blank!"]]})
 
 (defn process-user
   "Process a user to be included as a JSON response"

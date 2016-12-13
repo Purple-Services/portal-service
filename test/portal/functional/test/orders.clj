@@ -104,10 +104,10 @@
 (deftest orders
   (let [email "foo@bar.com"
         password "foobar"
-        full-name "Foo Bar"
+        name "Foo Bar"
         _ (login-test/register-user! {:platform-id email
                                       :password password
-                                      :full-name full-name})
+                                      :name name})
         login-response (portal.handler/handler
                         (-> (mock/request
                              :post "/login"
@@ -121,10 +121,10 @@
         ;; second user
         second-email "baz@qux.com"
         second-password "bazqux"
-        second-full-name "Baz Qux"
+        second-name "Baz Qux"
         _ (login-test/register-user! {:platform-id second-email
                                       :password second-password
-                                      :full-name second-full-name})
+                                      :name second-name})
         second-user (login/get-user-by-email second-email)
         second-user-id (:id second-user)]
     (testing "A user can get their own orders"

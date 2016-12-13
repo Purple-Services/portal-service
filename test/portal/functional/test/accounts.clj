@@ -129,11 +129,11 @@
                   (println "No reset password email was actually sent"))]
     (let [manager-email "manager@bar.com"
           manager-password "manager"
-          manager-full-name "Manager"
+          manager-name "Manager"
           ;; register a manager
           _ (login-test/register-user! {:platform-id manager-email
                                         :password manager-password
-                                        :full-name manager-full-name})
+                                        :name manager-name})
           manager (login/get-user-by-email manager-email)
           account-name "FooBar.com"
           ;; register an account
@@ -152,10 +152,10 @@
           ;; child account
           child-email "james@purpleapp.com"
           child-password "child"
-          child-full-name "Foo Bar"
+          child-name "Foo Bar"
           _ (login-test/register-user! {:platform-id child-email
                                         :password child-password
-                                        :full-name child-full-name})
+                                        :name child-name})
           child (login/get-user-by-email child-email)
           ;; associate child-account with account
           _ (accounts/associate-child-account! (:id child) (:id account))
@@ -172,14 +172,14 @@
           ;; retrieve the account
           another-account (accounts/get-account-by-name "BaxQux.com")
           second-child-email "baz@bar.com"
-          second-child-full-name "Baz Bar"
+          second-child-name "Baz Bar"
           ;; A regular user
           user-email "baz@qux.com"
           user-password "bazqux"
-          user-full-name "Baz Qux"
+          user-name "Baz Qux"
           _ (login-test/register-user! {:platform-id user-email
                                         :password user-password
-                                        :full-name user-full-name})
+                                        :name user-name})
           user (login/get-user-by-email user-email)
           user-id (:id user)
           user-login-response (test-utils/get-uri-json
@@ -196,7 +196,7 @@
                                                    child-user-id)
                                             {:json-body
                                              {:email second-child-email
-                                              :full-name second-child-full-name}
+                                              :name second-child-name}
                                              :headers child-auth-cookie})
                    (get-in [:status]))))
         ;; a regular user can't add a user to another account
@@ -206,7 +206,7 @@
                                                    user-id)
                                             {:json-body
                                              {:email second-child-email
-                                              :full-name second-child-full-name}
+                                              :name second-child-name}
                                              :headers user-auth-cookie})
                    (get-in [:status]))))
         ;; account manager can
@@ -215,7 +215,7 @@
                                                 manager-user-id)
                                          {:json-body
                                           {:email second-child-email
-                                           :full-name second-child-full-name}
+                                           :name second-child-name}
                                           :headers manager-auth-cookie})
                 (get-in [:body :success])))
         (testing "Users can't see other users"
@@ -729,23 +729,23 @@
       (util/unix->format (t/formatter "M/d/yyyy"))))
 
 (defn user-map->user-table-row
-  [{:keys [full-name email phone-number manager? created]
+  [{:keys [name email phone-number manager? created]
     :or {created (util/unix->format (util/now-unix)
                                     (t/formatter "M/d/yyyy"))}}]
   (string/join " " (filterv (comp not string/blank?)
-                            [full-name email phone-number (if manager?
+                            [name email phone-number (if manager?
                                                             "Yes"
                                                             "No") created])))
 
 (defn create-user
-  [{:keys [email full-name]}]
+  [{:keys [email name]}]
   (wait-until #(exists? add-users-button))
   (click add-users-button)
   (wait-until #(exists? users-form-email-address))
   (clear users-form-email-address)
   (input-text users-form-email-address email)
   (clear users-form-full-name)
-  (input-text users-form-full-name full-name)
+  (input-text users-form-full-name name)
   (click users-form-save)
   (wait-until #(exists? users-form-yes))
   (click users-form-yes))
@@ -753,11 +753,11 @@
 (deftest selenium-account-user
   (let [manager-email "manager@bar.com"
         manager-password "manager"
-        manager-full-name "Manager"
+        manager-name "Manager"
         ;; register a manager
         _ (login-test/register-user! {:platform-id manager-email
                                       :password manager-password
-                                      :full-name manager-full-name})
+                                      :name manager-name})
         manager (login/get-user-by-email manager-email)
         account-name "FooBar.com"
         ;; register an account
@@ -770,19 +770,19 @@
         ;; child account
         child-email "james@purpleapp.com"
         child-password "child"
-        child-full-name "Foo Bar"
+        child-name "Foo Bar"
         ;; child account 2
         second-child-email "baz@bar.com"
-        second-child-full-name "Baz Bar"
+        second-child-name "Baz Bar"
         ;; child account 3
         third-child-email "qux@quux.com"
-        third-child-full-name "Qux Quux"
+        third-child-name "Qux Quux"
         ;; register another account
         _ (accounts/create-account! "BazQux.com")
         ;; A regular user
         user-email "baz@qux.com"
         user-password "bazqux"
-        user-full-name "Baz Qux"
+        user-name "Baz Qux"
         ;; vehicles
         manager-vehicle {:make "Nissan"
                          :model "Altima"
@@ -791,7 +791,7 @@
                          :license-plate "FOOBAR"
                          :fuel-type "91 Octane"
                          :only-top-tier-gas? false
-                         :user manager-full-name}
+                         :user manager-name}
         first-child-vehicle {:make "Honda"
                              :model "Accord"
                              :year "2009"
@@ -799,7 +799,7 @@
                              :license-plate "BAZQUX"
                              :fuel-type "87 Octane"
                              :only-top-tier-gas? true
-                             :user child-full-name}
+                             :user child-name}
         second-child-vehicle {:make "Ford"
                               :model "F150"
                               :year "1995"
@@ -807,7 +807,7 @@
                               :license-plate "QUUXCORGE"
                               :fuel-type "91 Octane"
                               :only-top-tier-gas? true
-                              :user second-child-full-name}]
+                              :user second-child-name}]
     (testing "Users can be added"
       (selenium/go-to-uri "login")
       (selenium/login-portal manager-email manager-password)
@@ -820,7 +820,7 @@
       (wait-until #(exists? users-active-tab))
       (click users-active-tab)
       (is (= (user-map->user-table-row
-              {:full-name manager-full-name
+              {:name manager-name
                :email manager-email
                :manager? true
                :created (user-creation-date manager-email)})
@@ -843,7 +843,7 @@
       (click users-form-dismiss)
       ;; create a user
       (create-user {:email child-email
-                    :full-name child-full-name})
+                    :name child-name})
       ;; check that the user shows up in the pending table
       (wait-until #(exists? users-pending-tab))
       (click users-pending-tab)
@@ -851,14 +851,14 @@
                     {:xpath
                      "//div[@id='users']//table/tbody/tr[position()=1]"}))
       (is (= (user-map->user-table-row
-              {:full-name child-full-name
+              {:name child-name
                :email child-email
                :manager? false
                :created (user-creation-date child-email)})
              (text {:xpath "//div[@id='users']//table/tbody/tr[position()=1]"})))
       ;; add a second child user
       (create-user {:email second-child-email
-                    :full-name second-child-full-name})
+                    :name second-child-name})
       ;; check that the user shows up in the pending table
       (wait-until #(exists? users-pending-tab))
       (click users-pending-tab)
@@ -866,7 +866,7 @@
                     {:xpath
                      "//div[@id='users']//table/tbody/tr[position()=2]"}))
       (is (= (user-map->user-table-row
-              {:full-name second-child-full-name
+              {:name second-child-name
                :email second-child-email
                :manager? false
                :created (user-creation-date second-child-email)})
@@ -874,7 +874,7 @@
                     "//div[@id='users']//table/tbody/tr[position()=2]"})))
       ;; add a third child user
       (create-user {:email third-child-email
-                    :full-name third-child-full-name})
+                    :name third-child-name})
       ;; check that the user shows up in the pending table
       (wait-until #(exists? users-pending-tab))
       (click users-pending-tab)
@@ -882,7 +882,7 @@
                     {:xpath
                      "//div[@id='users']//table/tbody/tr[position()=3]"}))
       (is (= (user-map->user-table-row
-              {:full-name third-child-full-name
+              {:name third-child-name
                :email third-child-email
                :manager? false
                :created (user-creation-date third-child-email)})
