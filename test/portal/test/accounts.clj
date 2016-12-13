@@ -36,10 +36,10 @@
         create-results))))
 
 (defn manually-create-manager-account!
-  [{:keys [email password full-name account-name]}]
+  [{:keys [email password name account-name]}]
   (let [register-result (login-test/register-user! {:platform-id email
                                                     :password password
-                                                    :full-name full-name})]
+                                                    :name name})]
     (if register-result
       ;; manager was registered
       (let [new-manager (users/get-user-by-email email)
@@ -58,11 +58,11 @@
 (deftest child-account-validations
   (let [email "manager@bar.com"
         password "manager"
-        full-name "Manager"
+        name "Manager"
         ;; register a user
         _ (login-test/register-user! {:platform-id email
                                       :password password
-                                      :full-name full-name})
+                                      :name name})
         manager (users/get-user-by-email email)
         ;; register an account
         _ (accounts/create-account! "FooBar.com")
@@ -72,39 +72,39 @@
         _ (accounts/associate-account-manager! (:id manager) (:id account))]
     (testing "email validations work properly"
       (is (b/valid? {:email "foo@bar.com"
-                     :full-name "Foo Bar"}
+                     :name "Foo Bar"}
                     users/child-account-validations))
       (is (= '("Email can not be blank!")
              (get-bouncer-error (b/validate {:email ""
-                                             :full-name "Foo Bar"}
+                                             :name "Foo Bar"}
                                             users/child-account-validations)
                                 [:email])))
       (is (= '("Name can not be blank!")
              (get-bouncer-error (b/validate {:email "foo@bar.com"
-                                             :full-name ""}
+                                             :name ""}
                                             users/child-account-validations)
-                                [:full-name])))
+                                [:name])))
       (let [child-email "foo@bar.com"
             child-password "child"
-            child-full-name "Foo Bar"
+            child-name "Foo Bar"
             _ (login-test/register-user! {:platform-id child-email
                                           :password child-password
-                                          :full-name child-full-name})]
+                                          :name child-name})]
         (is (= '("Email address is already in use.")
                (get-bouncer-error
                 (b/validate {:email child-email
-                             :full-name child-full-name}
+                             :name child-name}
                             users/child-account-validations)
                 [:email])))))))
 
 (deftest create-child-account-tests
   (let [email "manager@bar.com"
         password "manager"
-        full-name "Manager"
+        name "Manager"
         ;; register a manager
         _ (login-test/register-user! {:platform-id email
                                       :password password
-                                      :full-name full-name})
+                                      :name name})
         manager (users/get-user-by-email email)
         ;; register an account
         _ (accounts/create-account! "FooBar.com")
@@ -118,7 +118,7 @@
         _ (accounts/associate-account-manager! (:id manager) (:id account))
         child-email "james@purpleapp.com"
         child-password "child"
-        child-full-name "Foo Bar"]
+        child-name "Foo Bar"]
     (with-redefs [common.sendgrid/send-template-email
                   (fn [to subject message
                        & {:keys [from template-id substitutions]}]
@@ -128,4 +128,4 @@
              (accounts/create-child-account!
               (:id account)
               {:email child-email
-               :full-name child-full-name})))))))
+               :name child-name})))))))

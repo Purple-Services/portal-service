@@ -16,7 +16,7 @@
 
 (defn register-user!
   "Create a user"
-  [{:keys [platform-id password full-name]}]
+  [{:keys [platform-id password name]}]
   (is (:success (db/!insert (db/conn) "users"
                             {:id (util/rand-str-alpha-num 20)
                              :email platform-id
@@ -25,7 +25,7 @@
                              :reset_key ""
                              :phone_number ""
                              :phone_number_verified 0
-                             :name full-name}))))
+                             :name name}))))
 
 
 (deftest user-can-login-and-logout
@@ -33,7 +33,7 @@
         password "foobar"
         user {:platform-id email
               :password password
-              :full-name "Foo Bar"}
+              :name "Foo Bar"}
         conn (db/conn)]
     (testing "A user can be logged in"
       (register-user! user)
@@ -62,7 +62,7 @@
         password "foobar"
         user {:platform-id email
               :password password
-              :full-name "Foo Bar"}]
+              :name "Foo Bar"}]
     (testing "A user can be logged in"
       (register-user! user)
       (is (:success

@@ -87,7 +87,7 @@
         {:success false
          :validation (b/validate new-user users/child-account-validations)}
         :else
-        (let [{:keys [email full-name]} new-user
+        (let [{:keys [email name]} new-user
               new-user-id (util/rand-str-alpha-num 20)
               reset-key (util/rand-str-alpha-num 22)]
           ;; register a user with a blank password
@@ -101,7 +101,7 @@
                        :reset_key reset-key
                        :phone_number ""
                        :phone_number_verified 0
-                       :name full-name})
+                       :name name})
           ;; add the user to account_children
           (associate-child-account! new-user-id account-id)
           ;; send an email to the user

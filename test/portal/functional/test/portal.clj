@@ -112,7 +112,7 @@
   (let [email "foo@bar.com"
         password "foobar"
         logout {:xpath "//a[text()='LOG OUT']"}
-        full-name "Foo Bar"]
+        name "Foo Bar"]
     (testing "Login with a username and password that doesn't exist"
       (selenium/go-to-uri "login")
       (selenium/login-portal email password)
@@ -121,7 +121,7 @@
     (testing "Create a user, login with credentials"
       (register-user! {:platform-id email
                        :password password
-                       :full-name full-name})
+                       :name name})
       (selenium/go-to-uri "login")
       (selenium/login-portal email password)
       (wait-until #(exists? logout))
@@ -133,7 +133,7 @@
 (deftest forgot-password
   (let [email "james@purpleapp.com"
         password "foobar"
-        full-name "James Borden"
+        name "James Borden"
         reset-button-xpath {:xpath "//button[text()='RESET PASSWORD']"}]
     (testing "User tries to reset key without reset key"
       (selenium/go-to-uri "reset-password/vs5YI50YZptjyONSoIofm7")
@@ -151,7 +151,7 @@
                       (println "No reset password email was actually sent"))]
         (register-user! {:platform-id email
                          :password password
-                         :full-name full-name})
+                         :name name})
         (selenium/go-to-uri "login")
         (input-text (find-element  selenium/login-email-input) email)
         (click (find-element forgot-password-link))
@@ -211,11 +211,11 @@
 (deftest account-manager-tests
   (let [email "manager@bar.com"
         password "manager"
-        full-name "Manager"
+        name "Manager"
         ;; register a user
         _ (register-user! {:platform-id email
                            :password password
-                           :full-name full-name})
+                           :name name})
         manager (users/get-user-by-email email)]
     (testing "Account manager logs in, but they are not yet an account manager"
       (selenium/go-to-uri "login")
@@ -380,11 +380,11 @@
 (deftest selenium-regular-user
   (let [email "foo@bar.com"
         password "foobar"
-        full-name "Foo Bar"
+        name "Foo Bar"
         ;; register a user
         _ (register-user! {:platform-id email
                            :password password
-                           :full-name full-name})
+                           :name name})
         first-vehicle {:make "Nissan"
                        :model "Altima"
                        :year "2006"
