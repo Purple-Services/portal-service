@@ -83,19 +83,33 @@
   [platform-id]
   (not (boolean (get-user-by-email platform-id))))
 
+(defn email-available-or-current-email?
+  [email id]
+  (let [current-user (first (db/!select (db/conn)
+                                        "users"
+                                        [:email]
+                                        {:id id}))
+        current-email (:email current-user)]
+    (or (= email current-email)
+        (platform-id-available? email))))
+
 (def new-child-account-validations
   {:email [[platform-id-available?
             :message "Email address is already in use."]
            [v/required :message "Email can not be blank!"]]
    :name [[v/required :message "Name can not be blank!"]]})
 
-(def child-account-validations
-  (assoc new-child-account-validations
+(defn child-account-validations
+  [id]
+  (assoc (dissoc new-child-account-validations
+                 :email)
          :id
          [[(comp not s/blank?)
            :message "You must specify the id of the user!"]]
          :active [[v/required
-                   :message "You must specify the active status of the user!"]]))
+                   :message "You must specify the active status of the user!"]]
+         :email [[email-available-or-current-email? id
+                  :message "Email address is already in use."]]))
 
 (defn process-user
   "Process a user to be included as a JSON response"
