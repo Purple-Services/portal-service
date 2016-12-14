@@ -1266,6 +1266,7 @@
       (click users-form-save)
       (wait-until #(exists? users-form-yes))
       (click users-form-yes)
+      (wait-until #(exists? users-form-save))
       (is (= "Name can not be blank!")
           (selenium/get-error-alert))
       (click users-form-dismiss)

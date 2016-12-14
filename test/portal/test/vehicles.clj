@@ -19,11 +19,6 @@
   (let [base-vehicle (test-vehicles/vehicle-map {})]
     (testing "A valid vehicle passes"
       (is (b/valid? base-vehicle)))
-    (testing "user-id validations work correctly"
-      (is (= '("You must assign a user to this vehicle!")
-             (get-bouncer-error (b/validate (dissoc base-vehicle :user_id)
-                                            vehicles/vehicle-validations)
-                                [:user_id]))))
     (testing "active validations work correctly"
       (is (= (list (str "You must designate this vehicle as "
                         "either active or inactive!"))

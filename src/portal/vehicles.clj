@@ -60,7 +60,6 @@
 (def new-vehicle-validations
   {;; confirm that the user_id is either their own, or belongs to
    ;; their account
-   :user_id [[(comp not s/blank?) :message "You must assign a user to this vehicle!"]]
    :active [[v/required :message (str "You must designate this vehicle as "
                                       "either active or inactive!")]]
    ;; confirm that the year is between 19XX-20XX
