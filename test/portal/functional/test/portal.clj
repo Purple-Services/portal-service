@@ -38,7 +38,7 @@
   {:xpath "//div[@id='vehicles']//form//input[@aria-labelledby='Make']"})
 (def vehicle-form-model
   {:xpath "//div[@id='vehicles']//form//input[@aria-labelledby='Model']"})
-(def vehicle-form-year {:xpath "//div[@id='vehicles']//form//input[@placeholder='Year']"})
+(def vehicle-form-year {:xpath "//div[@id='vehicles']//form//input[@aria-labelledby='Year']"})
 (def vehicle-form-color {:xpath "//div[@id='vehicles']//form//input[@aria-labelledby='Color']"})
 (def vehicle-form-license-plate
   {:xpath "//div[@id='vehicles']//form//input[@placeholder='License Plate']"})
@@ -239,7 +239,7 @@
   (clear vehicle-form-model)
   (input-text vehicle-form-model (str model "\n"))
   (clear vehicle-form-year)
-  (input-text vehicle-form-year year)
+  (input-text vehicle-form-year (str year "\n"))
   (clear vehicle-form-color)
   (input-text vehicle-form-color (str color "\n"))
   (clear vehicle-form-license-plate)
