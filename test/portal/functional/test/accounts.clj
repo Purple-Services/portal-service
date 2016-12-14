@@ -765,7 +765,7 @@
       :timestamp_created
       (util/unix->format (t/formatter "M/d/yyyy"))))
 
-(defn user-map->user-table-row
+(defn user-map->user-str
   [{:keys [name email phone-number manager? created]
     :or {created (util/unix->format (util/now-unix)
                                     (t/formatter "M/d/yyyy"))}}]
@@ -773,6 +773,18 @@
                             [name email phone-number (if manager?
                                                        "Yes"
                                                        "No") created])))
+(defn user-table-row->user-str
+  [position]
+  (let [row-col (fn [col]
+                  (str "//div[@id='users']//table/tbody/tr[position()="
+                       position "]/td[position()=" col "]"))
+        name (text {:xpath (row-col 1)})
+        email (text {:xpath (row-col 2)})
+        phone-number (text {:xpath (row-col 3)})
+        manager (text {:xpath (row-col 4)})
+        created (text {:xpath (row-col 5)})]
+    (string/join " " (filterv (comp not string/blank?)
+                              [name email phone-number manager created]))))
 
 (defn create-user
   [{:keys [email name]}]
@@ -856,13 +868,12 @@
       ;; check that the manager exists in the table
       (wait-until #(exists? users-active-tab))
       (click users-active-tab)
-      (is (= (user-map->user-table-row
+      (is (= (user-map->user-str
               {:name manager-name
                :email manager-email
                :manager? true
                :created (user-creation-date manager-email)})
-             (text
-              {:xpath "//div[@id='users']//table/tbody/tr[position()=1]"})))
+             (user-table-row->user-str 1)))
       ;; check to see that a blank username is invalid
       (wait-until #(exists? add-users-button))
       (click add-users-button)
@@ -887,12 +898,12 @@
       (wait-until #(exists?
                     {:xpath
                      "//div[@id='users']//table/tbody/tr[position()=1]"}))
-      (is (= (user-map->user-table-row
+      (is (= (user-map->user-str
               {:name child-name
                :email child-email
                :manager? false
                :created (user-creation-date child-email)})
-             (text {:xpath "//div[@id='users']//table/tbody/tr[position()=1]"})))
+             (user-table-row->user-str 1)))
       ;; add a second child user
       (create-user {:email second-child-email
                     :name second-child-name})
@@ -902,13 +913,12 @@
       (wait-until #(exists?
                     {:xpath
                      "//div[@id='users']//table/tbody/tr[position()=2]"}))
-      (is (= (user-map->user-table-row
+      (is (= (user-map->user-str
               {:name second-child-name
                :email second-child-email
                :manager? false
                :created (user-creation-date second-child-email)})
-             (text {:xpath
-                    "//div[@id='users']//table/tbody/tr[position()=2]"})))
+             (user-table-row->user-str 2)))
       ;; add a third child user
       (create-user {:email third-child-email
                     :name third-child-name})
@@ -918,13 +928,12 @@
       (wait-until #(exists?
                     {:xpath
                      "//div[@id='users']//table/tbody/tr[position()=3]"}))
-      (is (= (user-map->user-table-row
+      (is (= (user-map->user-str
               {:name third-child-name
                :email third-child-email
                :manager? false
                :created (user-creation-date third-child-email)})
-             (text {:xpath
-                    "//div[@id='users']//table/tbody/tr[position()=3]"}))))
+             (user-table-row->user-str 3))))
     (testing "Manager adds vehicles"
       (click portal/vehicles-link)
       (wait-until #(exists? portal/no-vehicles-message))

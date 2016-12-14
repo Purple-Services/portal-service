@@ -95,7 +95,9 @@
   (db/!update (db/conn) "account_children"
               {:user_id user-id
                :account_id account-id
-               :active true}))
+               :active true}
+              {:user_id user-id
+               :account_id account-id}))
 
 (defn deactivate-child-account!
   "Given a user-id and account-id, deactivate the user as a child of
@@ -104,7 +106,9 @@
   (db/!update (db/conn) "account_children"
               {:user_id user-id
                :account_id account-id
-               :active false}))
+               :active false}
+              {:user_id user-id
+               :account_id account-id}))
 
 (defn create-child-account!
   "Create a new child account"
