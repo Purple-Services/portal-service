@@ -2,6 +2,7 @@
   (:require [crypto.password.bcrypt :as bcrypt]
             [clj-time.format :as t]
             [clj-webdriver.taxi :refer :all]
+            [clojure.edn :as edn]
             [clojure.string :as string]
             [clojure.test :refer [deftest is testing use-fixtures]]
             [common.db :as db]
@@ -125,6 +126,10 @@
   {:xpath "//div[@id='users']//button[contains(text(),'Active')]"})
 (def users-table
   {:xpath "//div[@id='users']//table"})
+(def active-users-filter
+  {:xpath "//div[@id='users']//button[contains(text(),'Active')]"})
+(def deactivated-users-filter
+  {:xpath "//div[@id='users']//button[contains(text(),'Deactivated')]"})
 
 (deftest account-managers-security
   (with-redefs [common.sendgrid/send-template-email
@@ -786,6 +791,90 @@
     (string/join " " (filterv (comp not string/blank?)
                               [name email phone-number manager created]))))
 
+(defn active-users-filter-count
+  []
+  (edn/read-string (second (re-matches #".*\(([0-9]*)\)"
+                                       (text active-users-filter)))))
+
+(defn deactivated-users-filter-count
+  []
+  (edn/read-string (second (re-matches #".*\(([0-9]*)\)"
+                                       (text deactivated-users-filter)))))
+
+(defn users-table-count
+  []
+  (count (find-elements {:xpath "//div[@id='users']//table/tbody/tr"})))
+
+(defn deactivate-user-at-position
+  [position]
+  (let [deactivate-link {:xpath
+                         (str "//div[@id='users']//table/tbody/tr[position()"
+                              "=" position "]/td[last()]/div/a[position()=2]")}]
+    (click active-users-filter)
+    (wait-until #(= (active-users-filter-count)
+                    (users-table-count)))
+    (wait-until #(exists? deactivate-link))
+    (click deactivate-link)))
+
+(defn activate-user-at-position
+  [position]
+  (let [activate-link {:xpath
+                       (str "//div[@id='users']//table/tbody/tr[position()"
+                            "=" position "]/td[last()]/div/a[position()=2]")}]
+    (click deactivated-users-filter)
+    (wait-until #(= (deactivated-users-filter-count)
+                    (users-table-count)))
+    (wait-until #(exists? activate-link))
+    (click activate-link)))
+
+(defn compare-active-users-table-and-filter-buttons
+  []
+  (wait-until #(exists? active-users-filter))
+  (click active-users-filter)
+  (wait-until #(= (active-users-filter-count)
+                  (users-table-count)))
+  (is (= (active-users-filter-count)
+         (users-table-count))))
+
+(defn compare-deactivated-users-table-and-filter-buttons
+  []
+  (wait-until #(exists? deactivated-users-filter))
+  (click deactivated-users-filter)
+  (wait-until #(= (deactivated-users-filter-count)
+                  (users-table-count)))
+  (is (= (deactivated-users-filter-count)
+         (users-table-count))))
+
+(defn count-in-active-users-filter-correct?
+  [n]
+  (wait-until #(= (active-users-filter-count)
+                  n))
+  (is (= n
+         (active-users-filter-count))))
+
+(defn count-in-deactivated-users-filter-correct?
+  [n]
+  (wait-until #(= (deactivated-users-filter-count)
+                  n))
+  (is (= n
+         (deactivated-users-filter-count))))
+
+(defn deactivate-user-and-check
+  [position new-count]
+  (deactivate-user-at-position position)
+  ;; check that the counts are correct
+  (count-in-active-users-filter-correct? new-count)
+  (compare-active-users-table-and-filter-buttons)
+  (compare-deactivated-users-table-and-filter-buttons))
+
+(defn activate-user-and-check
+  [position new-count]
+  (activate-user-at-position position)
+  ;; check that the counts are correct
+  (count-in-deactivated-users-filter-correct? new-count)
+  (compare-active-users-table-and-filter-buttons)
+  (compare-deactivated-users-table-and-filter-buttons))
+
 (defn create-user
   [{:keys [email name]}]
   (wait-until #(exists? add-users-button))
@@ -1066,4 +1155,30 @@
       ;; reactivate the second vehicle
       (portal/activate-vehicle-and-check 1 1)
       ;; reactive the third vehicle
-      (portal/activate-vehicle-and-check 1 0))))
+      (portal/activate-vehicle-and-check 1 0))
+    (testing "Account managers can activate and reactivate users")
+    ;; login manager
+    (selenium/go-to-uri "login")
+    (selenium/login-portal manager-email manager-password)
+    (wait-until #(exists? users-link))
+    ;; click on the user tab
+    (click users-link)
+    (wait-until #(exists? add-users-button))
+    ;; check that row count of the active table matches the count in the
+    ;; active filter
+    (compare-active-users-table-and-filter-buttons)
+    ;; check that row count of the deactivated table matches count in the
+    ;; deactivated filter
+    (compare-deactivated-users-table-and-filter-buttons)
+    ;; deactivate the first user
+    (deactivate-user-and-check 2 3)
+    ;; deactivate the second user
+    (deactivate-user-and-check 2 2)
+    ;; deactivate the third user
+    (deactivate-user-and-check 2 1)
+    ;; reactivate the first user
+    (activate-user-and-check 1 2)
+    ;; reactivate the second user
+    (activate-user-and-check 1 1)
+    ;; reactive the third user
+    (activate-user-and-check 1 0)))
