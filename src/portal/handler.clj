@@ -156,9 +156,9 @@
 (defn on-error
   [request value]
   (-> (response
-       {:header {}
-        :body {:message (str "you do not have permission to access "
-                             (:uri request))}})
+       {:message (str "you do not have permission to access "
+                      (:uri request))
+        :success false})
       (assoc :status 403)))
 
 (def login-rules
