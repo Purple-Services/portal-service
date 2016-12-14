@@ -148,9 +148,9 @@
 (defn edit-user!
   "Edit a user. Only child accounts can be edited at this point"
   [account-id user]
-  (if (b/valid? user users/child-account-validations)
+  (if (b/valid? user (users/child-account-validations (:id user)))
     (let [db-user (users/get-user (:id user))
-          user-id (:id (db-user))]
+          user-id (:id db-user)]
       (cond
         ;; we're not going to allow for the editing
         ;; AND activation of a user, if active has changed
@@ -174,7 +174,8 @@
              :message "There was an error when modifying this user"}))))
     ;; send error message
     {:success false
-     :validation (b/validate user users/child-account-validations)}))
+     :validation (b/validate user (users/child-account-validations (:id user)))}
+    ))
 
 (defn account-vehicles-sql
   [account-id]

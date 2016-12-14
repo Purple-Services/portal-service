@@ -353,7 +353,7 @@
            (GET "/user/:user-id" [user-id]
                 (response
                  (users/get-user user-id)))
-           (PUT "/user" {body :body}
+           (PUT "/edit-user" {body :body}
                 (response
                  (let [user (keywordize-keys body)]
                    (accounts/edit-user! account-id user))))

@@ -94,6 +94,10 @@
   [account-id manager-id]
   (str (account-manager-context-uri account-id manager-id) "/edit-vehicle"))
 
+(defn manager-edit-user-uri
+  [account-id manager-id]
+  (str (account-manager-context-uri account-id manager-id) "/edit-user"))
+
 (defn manager-vehicles-uri
   [account-id manager-id]
   (str (account-manager-context-uri account-id manager-id) "/vehicles"))
@@ -188,7 +192,7 @@
                                 {:email user-email
                                  :password user-password}})
           user-auth-cookie (cookies/auth-cookie user-login-response)]
-      (testing "Only account managers can add users"
+      (testing "Only account managers can add and edit users"
         ;; child user can't add a user
         (is (= 403
                (-> (test-utils/get-uri-json :post (add-user-uri
@@ -197,6 +201,17 @@
                                             {:json-body
                                              {:email second-child-email
                                               :name second-child-name}
+                                             :headers child-auth-cookie})
+                   (get-in [:status]))))
+        ;; a child user can't edit a user
+        (is (= 403
+               (-> (test-utils/get-uri-json :put (manager-edit-user-uri
+                                                  account-id
+                                                  child-user-id)
+                                            {:json-body
+                                             {:email second-child-email
+                                              :name second-child-name
+                                              :id child-user-id}
                                              :headers child-auth-cookie})
                    (get-in [:status]))))
         ;; a regular user can't add a user to another account
@@ -209,13 +224,35 @@
                                               :name second-child-name}
                                              :headers user-auth-cookie})
                    (get-in [:status]))))
-        ;; account manager can
+        ;; a regular user can't edit a user of an account
+        (is (= 403
+               (-> (test-utils/get-uri-json :put (manager-edit-user-uri
+                                                  account-id
+                                                  user-id)
+                                            {:json-body
+                                             {:email second-child-email
+                                              :name second-child-name
+                                              :id child-user-id}
+                                             :headers user-auth-cookie})
+                   (get-in [:status]))))
+        ;; account manager can add a user
         (is (-> (test-utils/get-uri-json :post (add-user-uri
                                                 account-id
                                                 manager-user-id)
                                          {:json-body
                                           {:email second-child-email
                                            :name second-child-name}
+                                          :headers manager-auth-cookie})
+                (get-in [:body :success])))
+        ;; account manager can edit a user
+        (is (-> (test-utils/get-uri-json :put (manager-edit-user-uri
+                                               account-id
+                                               manager-user-id)
+                                         {:json-body
+                                          {:email child-email
+                                           :name child-name
+                                           :id child-user-id
+                                           :active true}
                                           :headers manager-auth-cookie})
                 (get-in [:body :success])))
         (testing "Users can't see other users"
