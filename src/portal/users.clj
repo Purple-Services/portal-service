@@ -97,7 +97,8 @@
   {:email [[platform-id-available?
             :message "Email address is already in use."]
            [v/required :message "Email can not be blank!"]]
-   :name [[v/required :message "Name can not be blank!"]]})
+   :name [[(comp not s/blank?) :message "Name can not be blank!"]
+          [v/required :message "Name can not be blank!"]]})
 
 (defn child-account-validations
   [id]

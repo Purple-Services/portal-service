@@ -112,6 +112,8 @@
 (def add-users-button {:xpath "//div[@id='users']//button[text()=' Add']"})
 (def users-form-email-address {:xpath "//div[@id='users']//form//input[@placeholder='Email Address']"})
 (def users-form-full-name {:xpath "//div[@id='users']//form//input[contains(@placeholder,'Full Name')]"})
+(def users-form-phone-number
+  {:xpath "//div[@id='users']//form//input[contains(@placeholder,'Phone Number')]"})
 (def users-form-save
   {:xpath "//div[@id='users']//form//button[text()='Save']"})
 (def users-form-dismiss
@@ -779,10 +781,15 @@
                                                        "Yes"
                                                        "No") created])))
 (defn user-table-row->user-str
-  [position]
+  [email]
   (let [row-col (fn [col]
-                  (str "//div[@id='users']//table/tbody/tr[position()="
-                       position "]/td[position()=" col "]"))
+                  (str "//div[@id='users']//table/tbody/tr/td[text()='"
+                       email
+                       "']/parent::tr"
+                       "/td[position()=" col "]"))
+        _ (wait-until #(exists? {:xpath (row-col 2)}))
+        _ (wait-until #(= (text {:xpath (row-col 2)})
+                          email))
         name (text {:xpath (row-col 1)})
         email (text {:xpath (row-col 2)})
         phone-number (text {:xpath (row-col 3)})
@@ -888,6 +895,38 @@
   (wait-until #(exists? users-form-yes))
   (click users-form-yes))
 
+(defn edit-user
+  [email]
+  (wait-until
+   #(exists?
+     {:xpath
+      (str "//div[@id='users']//table/tbody/tr/td[text()='"
+           email
+           "']/parent::tr/td[last()]/div/a[position()=1]")}))
+  (click
+   {:xpath
+    (str "//div[@id='users']//table/tbody/tr/td[text()='"
+         email
+         "']/parent::tr/td[last()]/div/a[position()=1]")}))
+
+(defn compare-user-row-and-map
+  [email user-map]
+  (wait-until #(not (exists?
+                     users-form-yes)))
+  (wait-until #(exists?
+                {:xpath
+                 (str "//div[@id='users']//table/tbody/tr/td[text()='"
+                      email
+                      "']/parent::tr")}))
+  (wait-until #(= (user-map->user-str
+                   (assoc user-map
+                          :created (user-creation-date (:email user-map))))
+                  (user-table-row->user-str email)))
+  (is (= (user-map->user-str
+          (assoc user-map
+                 :created (user-creation-date (:email user-map))))
+         (user-table-row->user-str email))))
+
 (deftest selenium-account-user
   (let [manager-email "manager@bar.com"
         manager-password "manager"
@@ -915,6 +954,7 @@
         ;; child account 3
         third-child-email "qux@quux.com"
         third-child-name "Qux Quux"
+        third-child-number "800-555-1212"
         ;; register another account
         _ (accounts/create-account! "BazQux.com")
         ;; A regular user
@@ -962,7 +1002,7 @@
                :email manager-email
                :manager? true
                :created (user-creation-date manager-email)})
-             (user-table-row->user-str 1)))
+             (user-table-row->user-str manager-email)))
       ;; check to see that a blank username is invalid
       (wait-until #(exists? add-users-button))
       (click add-users-button)
@@ -984,45 +1024,27 @@
       ;; check that the user shows up in the pending table
       (wait-until #(exists? users-pending-tab))
       (click users-pending-tab)
-      (wait-until #(exists?
-                    {:xpath
-                     "//div[@id='users']//table/tbody/tr[position()=1]"}))
-      (is (= (user-map->user-str
-              {:name child-name
-               :email child-email
-               :manager? false
-               :created (user-creation-date child-email)})
-             (user-table-row->user-str 1)))
+      (compare-user-row-and-map child-email {:name child-name
+                                             :email child-email
+                                             :manager? false})
       ;; add a second child user
       (create-user {:email second-child-email
                     :name second-child-name})
       ;; check that the user shows up in the pending table
       (wait-until #(exists? users-pending-tab))
       (click users-pending-tab)
-      (wait-until #(exists?
-                    {:xpath
-                     "//div[@id='users']//table/tbody/tr[position()=2]"}))
-      (is (= (user-map->user-str
-              {:name second-child-name
-               :email second-child-email
-               :manager? false
-               :created (user-creation-date second-child-email)})
-             (user-table-row->user-str 2)))
+      (compare-user-row-and-map second-child-email {:name second-child-name
+                                                    :email second-child-email
+                                                    :manager? false})
       ;; add a third child user
       (create-user {:email third-child-email
                     :name third-child-name})
       ;; check that the user shows up in the pending table
       (wait-until #(exists? users-pending-tab))
       (click users-pending-tab)
-      (wait-until #(exists?
-                    {:xpath
-                     "//div[@id='users']//table/tbody/tr[position()=3]"}))
-      (is (= (user-map->user-str
-              {:name third-child-name
-               :email third-child-email
-               :manager? false
-               :created (user-creation-date third-child-email)})
-             (user-table-row->user-str 3))))
+      (compare-user-row-and-map third-child-email {:name third-child-name
+                                                   :email third-child-email
+                                                   :manager? false}))
     (testing "Manager adds vehicles"
       (click portal/vehicles-link)
       (wait-until #(exists? portal/no-vehicles-message))
@@ -1156,38 +1178,108 @@
       (portal/activate-vehicle-and-check 1 1)
       ;; reactive the third vehicle
       (portal/activate-vehicle-and-check 1 0))
-    (testing "Account managers can activate and reactivate users")
-    ;; login manager
-    (selenium/go-to-uri "login")
-    (selenium/login-portal manager-email manager-password)
-    (wait-until #(exists? users-link))
-    ;; click on the user tab
-    (click users-link)
-    (wait-until #(exists? add-users-button))
-    ;; check that row count of the active table matches the count in the
-    ;; active filter
-    (compare-active-users-table-and-filter-buttons)
-    ;; check that row count of the deactivated table matches count in the
-    ;; deactivated filter
-    (compare-deactivated-users-table-and-filter-buttons)
-    ;; deactivate the first user
-    (deactivate-user-and-check 2 3)
-    ;; deactivate the second user
-    (deactivate-user-and-check 2 2)
-    ;; deactivate the third user
-    (deactivate-user-and-check 2 1)
-    ;; reactivate the first user
-    (activate-user-and-check 1 2)
-    ;; reactivate the second user
-    (activate-user-and-check 1 1)
-    ;; reactive the third user
-    (activate-user-and-check 1 0)
-    ;; check that the account managers can't deactivate manager accounts
-    (click active-users-filter)
-    (wait-until #(= (active-users-filter-count)
-                    (users-table-count)))
-    (is (not
-         (re-find #"Deactivate"
-                  (text
-                   {:xpath (str "//div[@id='users']//table/tbody/tr[position()"
-                                "=" 1 "]")}))))))
+    (testing "Account managers can activate and reactivate users"
+      ;; login manager
+      (selenium/go-to-uri "login")
+      (selenium/login-portal manager-email manager-password)
+      (wait-until #(exists? users-link))
+      ;; click on the user tab
+      (click users-link)
+      (wait-until #(exists? add-users-button))
+      ;; check that row count of the active table matches the count in the
+      ;; active filter
+      (compare-active-users-table-and-filter-buttons)
+      ;; check that row count of the deactivated table matches count in the
+      ;; deactivated filter
+      (compare-deactivated-users-table-and-filter-buttons)
+      ;; deactivate the first user
+      (deactivate-user-and-check 2 3)
+      ;; deactivate the second user
+      (deactivate-user-and-check 2 2)
+      ;; deactivate the third user
+      (deactivate-user-and-check 2 1)
+      ;; reactivate the first user
+      (activate-user-and-check 1 2)
+      ;; reactivate the second user
+      (activate-user-and-check 1 1)
+      ;; reactive the third user
+      (activate-user-and-check 1 0)
+      ;; check that the account managers can't deactivate manager accounts
+      (click active-users-filter)
+      (wait-until #(= (active-users-filter-count)
+                      (users-table-count)))
+      (is (not
+           (re-find #"Deactivate"
+                    (text
+                     {:xpath
+                      (str "//div[@id='users']//table/tbody/tr[position()"
+                           "=" 1 "]")})))))
+    (testing "An account manager can edit users"
+      ;; check that only the name be edited
+      (edit-user third-child-email)
+      (wait-until #(exists? users-form-full-name))
+      (clear users-form-full-name)
+      (input-text users-form-full-name "Qux Quxxer")
+      (click users-form-save)
+      (wait-until #(exists? users-form-yes))
+      (click users-form-yes)
+      ;; (println {:name "Qux Quxxer"
+      ;;           :email third-child-email
+      ;;           :manager? false})
+      (wait-until #(exists? add-users-button))
+      (compare-user-row-and-map third-child-email {:name "Qux Quxxer"
+                                                   :email third-child-email
+                                                   :manager? false})
+      ;; check that only the phone number can be edited
+      (edit-user third-child-email)
+      (wait-until #(exists? users-form-full-name))
+      (clear users-form-phone-number)
+      (input-text users-form-phone-number "800-555-1212")
+      (click users-form-save)
+      (wait-until #(exists? users-form-yes))
+      (click users-form-yes)
+      (wait-until #(exists? add-users-button))
+      (compare-user-row-and-map third-child-email {:name "Qux Quxxer"
+                                                   :email third-child-email
+                                                   :phone-number "800-555-1212"
+                                                   :manager? false})
+      ;; check that name and phone number can be edited together
+      (edit-user third-child-email)
+      (wait-until #(exists? users-form-full-name))
+      (clear users-form-full-name)
+      (input-text users-form-full-name "Qux Quxx")
+      (clear users-form-phone-number)
+      (input-text users-form-phone-number "800-555-5555")
+      (click users-form-save)
+      (wait-until #(exists? users-form-yes))
+      (click users-form-yes)
+      (wait-until #(exists? add-users-button))
+      (compare-user-row-and-map third-child-email {:name "Qux Quxx"
+                                                   :email third-child-email
+                                                   :phone-number "800-555-5555"
+                                                   :manager? false})
+      ;; check that a blank name results in an error message
+      (edit-user third-child-email)
+      (wait-until #(exists? users-form-full-name))
+      (clear users-form-full-name)
+      (input-text users-form-full-name " ")
+      (click users-form-save)
+      (wait-until #(exists? users-form-yes))
+      (click users-form-yes)
+      (is (= "Name can not be blank!")
+          (selenium/get-error-alert))
+      (click users-form-dismiss)
+      (wait-until #(exists? add-users-button))
+      ;; check that a blank phone number can be used
+      (edit-user third-child-email)
+      (wait-until #(exists? users-form-full-name))
+      (clear users-form-phone-number)
+      (input-text users-form-phone-number " ")
+      (click users-form-save)
+      (wait-until #(exists? users-form-yes))
+      (click users-form-yes)
+      (wait-until #(exists? add-users-button))
+      (compare-user-row-and-map third-child-email {:name "Qux Quxx"
+                                                   :email third-child-email
+                                                   :phone-number ""
+                                                   :manager? false}))))

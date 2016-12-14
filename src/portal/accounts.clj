@@ -170,7 +170,7 @@
                                   (db/conn)
                                   "users"
                                   (select-keys
-                                   user [:name :phone_number :email])
+                                   user [:name :phone_number])
                                   {:id user-id})]
           (if (:success update-user-result)
             (assoc update-user-result :id user-id)
