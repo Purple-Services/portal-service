@@ -1181,4 +1181,13 @@
     ;; reactivate the second user
     (activate-user-and-check 1 1)
     ;; reactive the third user
-    (activate-user-and-check 1 0)))
+    (activate-user-and-check 1 0)
+    ;; check that the account managers can't deactivate manager accounts
+    (click active-users-filter)
+    (wait-until #(= (active-users-filter-count)
+                    (users-table-count)))
+    (is (not
+         (re-find #"Deactivate"
+                  (text
+                   {:xpath (str "//div[@id='users']//table/tbody/tr[position()"
+                                "=" 1 "]")}))))))
