@@ -132,6 +132,10 @@
   {:xpath "//div[@id='users']//button[contains(text(),'Active')]"})
 (def deactivated-users-filter
   {:xpath "//div[@id='users']//button[contains(text(),'Deactivated')]"})
+(def pending-users-filter
+  {:xpath "//div[@id='users']//button[contains(text(),'Pending')]"})
+(def users-refresh-button
+  {:xpath "//div[@id='users']//button/i[contains(@class,'fa-refresh')]"})
 
 (deftest account-managers-security
   (with-redefs [common.sendgrid/send-template-email
@@ -808,6 +812,11 @@
   (edn/read-string (second (re-matches #".*\(([0-9]*)\)"
                                        (text deactivated-users-filter)))))
 
+(defn pending-users-filter-count
+  []
+  (edn/read-string (second (re-matches #".*\(([0-9]*)\)"
+                                       (text pending-users-filter)))))
+
 (defn users-table-count
   []
   (count (find-elements {:xpath "//div[@id='users']//table/tbody/tr"})))
@@ -865,6 +874,13 @@
                   n))
   (is (= n
          (deactivated-users-filter-count))))
+
+(defn count-in-pending-users-filter-correct?
+  [n]
+  (wait-until #(= (pending-users-filter-count)
+                  n))
+  (is (= n
+         (pending-users-filter-count))))
 
 (defn deactivate-user-and-check
   [position new-count]
@@ -1193,6 +1209,34 @@
       ;; click on the user tab
       (click users-link)
       (wait-until #(exists? add-users-button))
+      ;; check that there are two pending users
+      (count-in-pending-users-filter-correct? 2)
+      (count-in-active-users-filter-correct? 2)
+      (count-in-deactivated-users-filter-correct? 0)
+      ;; set the password for the second child user
+      (is (:success (db/!update
+                     (db/conn) "users"
+                     {:reset_key ""
+                      :password_hash (bcrypt/encrypt child-password)}
+                     {:id (:id (login/get-user-by-email second-child-email))})))
+      ;; click the user refresh button
+      (click users-refresh-button)
+      ;; check that the filter counts are now correct
+      (count-in-pending-users-filter-correct? 1)
+      (count-in-active-users-filter-correct? 3)
+      (count-in-deactivated-users-filter-correct? 0)
+      ;; set the password for the third child user
+      (is (:success (db/!update
+                     (db/conn) "users"
+                     {:reset_key ""
+                      :password_hash (bcrypt/encrypt child-password)}
+                     {:id (:id (login/get-user-by-email third-child-email))})))
+      ;; click the user refresh button
+      (click users-refresh-button)
+      ;; check that the filter counts are now correct
+      (count-in-pending-users-filter-correct? 0)
+      (count-in-active-users-filter-correct? 4)
+      (count-in-deactivated-users-filter-correct? 0)
       ;; check that row count of the active table matches the count in the
       ;; active filter
       (compare-active-users-table-and-filter-buttons)
