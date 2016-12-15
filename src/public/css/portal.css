@@ -129,6 +129,10 @@ tbody > tr.active > td {
     color: #3498db;
     font-weight: normal;
     cursor: pointer;
+    text-decoration: none;}
+
+.fake-link:hover {
+    color:#F88458;
     text-decoration: none;
 }
 
