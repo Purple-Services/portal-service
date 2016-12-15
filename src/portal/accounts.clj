@@ -120,8 +120,8 @@
         :else
         (let [{:keys [email name phone_number]
                :or {phone_number ""}} new-user
-              new-user-id (util/rand-str-alpha-num 20)
-              reset-key (util/rand-str-alpha-num 22)]
+               new-user-id (util/rand-str-alpha-num 20)
+               reset-key (util/rand-str-alpha-num 22)]
           ;; register a user with a blank password
           ;; will not be able to login without resetting
           ;; password
@@ -146,7 +146,8 @@
            {:%RESETLINK%
             (str "Please click the link below to set your password:"
                  "<br />" "https://purpledelivery.com/" "reset-password/"
-                 reset-key)})
+                 reset-key)
+            :%NAME% name})
           {:success true
            :id new-user-id})))
 
