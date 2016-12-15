@@ -883,7 +883,7 @@
   (compare-deactivated-users-table-and-filter-buttons))
 
 (defn create-user
-  [{:keys [email name]}]
+  [{:keys [email name phone-number]}]
   (wait-until #(exists? add-users-button))
   (click add-users-button)
   (wait-until #(exists? users-form-email-address))
@@ -891,6 +891,8 @@
   (input-text users-form-email-address email)
   (clear users-form-full-name)
   (input-text users-form-full-name name)
+  (clear users-form-phone-number)
+  (input-text users-form-phone-number phone-number)
   (click users-form-save)
   (wait-until #(exists? users-form-yes))
   (click users-form-yes))
@@ -1020,7 +1022,8 @@
       (click users-form-dismiss)
       ;; create a user
       (create-user {:email child-email
-                    :name child-name})
+                    :name child-name
+                    :phone-number ""})
       ;; check that the user shows up in the pending table
       (wait-until #(exists? users-pending-tab))
       (click users-pending-tab)
@@ -1029,7 +1032,8 @@
                                              :manager? false})
       ;; add a second child user
       (create-user {:email second-child-email
-                    :name second-child-name})
+                    :name second-child-name
+                    :phone-number ""})
       ;; check that the user shows up in the pending table
       (wait-until #(exists? users-pending-tab))
       (click users-pending-tab)
@@ -1038,13 +1042,16 @@
                                                     :manager? false})
       ;; add a third child user
       (create-user {:email third-child-email
-                    :name third-child-name})
+                    :name third-child-name
+                    :phone-number third-child-number})
       ;; check that the user shows up in the pending table
       (wait-until #(exists? users-pending-tab))
       (click users-pending-tab)
-      (compare-user-row-and-map third-child-email {:name third-child-name
-                                                   :email third-child-email
-                                                   :manager? false}))
+      (compare-user-row-and-map third-child-email
+                                {:name third-child-name
+                                 :email third-child-email
+                                 :phone-number third-child-number
+                                 :manager? false}))
     (testing "Manager adds vehicles"
       (click portal/vehicles-link)
       (wait-until #(exists? portal/no-vehicles-message))
@@ -1223,25 +1230,24 @@
       (click users-form-save)
       (wait-until #(exists? users-form-yes))
       (click users-form-yes)
-      ;; (println {:name "Qux Quxxer"
-      ;;           :email third-child-email
-      ;;           :manager? false})
       (wait-until #(exists? add-users-button))
-      (compare-user-row-and-map third-child-email {:name "Qux Quxxer"
-                                                   :email third-child-email
-                                                   :manager? false})
+      (compare-user-row-and-map third-child-email
+                                {:name "Qux Quxxer"
+                                 :email third-child-email
+                                 :phone-number third-child-number
+                                 :manager? false})
       ;; check that only the phone number can be edited
       (edit-user third-child-email)
       (wait-until #(exists? users-form-full-name))
       (clear users-form-phone-number)
-      (input-text users-form-phone-number "800-555-1212")
+      (input-text users-form-phone-number "800-555-1111")
       (click users-form-save)
       (wait-until #(exists? users-form-yes))
       (click users-form-yes)
       (wait-until #(exists? add-users-button))
       (compare-user-row-and-map third-child-email {:name "Qux Quxxer"
                                                    :email third-child-email
-                                                   :phone-number "800-555-1212"
+                                                   :phone-number "800-555-1111"
                                                    :manager? false})
       ;; check that name and phone number can be edited together
       (edit-user third-child-email)

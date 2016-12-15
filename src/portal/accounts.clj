@@ -118,7 +118,8 @@
         {:success false
          :validation (b/validate new-user users/new-child-account-validations)}
         :else
-        (let [{:keys [email name]} new-user
+        (let [{:keys [email name phone_number]
+               :or {phone_number ""}} new-user
               new-user-id (util/rand-str-alpha-num 20)
               reset-key (util/rand-str-alpha-num 22)]
           ;; register a user with a blank password
@@ -130,7 +131,7 @@
                        :type "native"
                        :password_hash ""
                        :reset_key reset-key
-                       :phone_number ""
+                       :phone_number phone_number
                        :phone_number_verified 0
                        :name name})
           ;; add the user to account_children
