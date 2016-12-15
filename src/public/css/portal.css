@@ -239,3 +239,5 @@ thead > tr > .fake-link {
     font-size: 16px;
     font-weight: bolder;
 }
+
+button:focus {outline:0 !important;}
