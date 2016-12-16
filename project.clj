@@ -3,21 +3,17 @@
   :url "http://dashboard.purplapp.com"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
-  :dependencies [[buddy/buddy-auth "0.8.1"]
+  :dependencies [[org.clojure/clojure "1.9.0-alpha11"]
+                 [buddy/buddy-auth "0.8.1"]
                  [clj-time "0.12.0"]
-                 [clj-webdriver "0.7.2"]
-                 [org.seleniumhq.selenium/selenium-java "2.48.2"]
                  [bouncer "1.0.0"]
-                 [common "2.0.2-SNAPSHOT"]
                  [compojure "1.5.1"]
                  [enlive "1.1.6"]
-                 [org.clojure/clojure "1.9.0-alpha11"]
-                 [ring/ring-core "1.5.0"]
-                 [ring/ring-devel "1.5.0"]
                  [ring/ring-json "0.4.0"]
-                 [ring/ring-mock "0.3.0"]
-                 [ring/ring-jetty-adapter "1.5.0"]
-                 [ring-cors "0.1.8"]]
+                 [ring-cors "0.1.8"]
+                 [ring/ring-ssl "0.2.1"]
+                 [ring/ring-devel "1.5.0"]
+                 [common "2.0.2-SNAPSHOT"]]
   :plugins [[lein-ring "0.9.7"]
             [lein-beanstalk "0.2.7"]
             [com.jakemccrary/lein-test-refresh "0.17.0"]]
@@ -29,10 +25,29 @@
          :auto-refresh? false
          :browser-uri "/"
          :reload-paths ["src"]}
-  :aws {:beanstalk {:environments [{:name "portal-dev"}]
+  :aws {:beanstalk {:app-name "portal"
+                    :environments [{:name "portal-dev"}
+                                   {:name "portal-prod"}]
                     :s3-bucket "leinbeanstalkpurple"
                     :region "us-west-2"}}
-  :profiles {:app-integration-test {:env {:test-db-host "localhost"
+  :profiles {:shared [{:dependencies
+                       [[javax.servlet/servlet-api "2.5"]
+                        [org.seleniumhq.selenium/selenium-java "2.48.2"]
+                        [clj-webdriver "0.7.2"]
+                        [ring "1.5.0"]
+                        [ring/ring-jetty-adapter "1.5.0"]
+                        [ring/ring-mock "0.3.0"]
+                        [pjstadig/humane-test-output "0.6.0"]]
+                       :injections
+                       [(require 'pjstadig.humane-test-output)
+                        (pjstadig.humane-test-output/activate!)]}]
+             :local [:shared :profiles/local
+                     {:env {:base-url "http://localhost:3002/"}}]
+             :dev [:shared :profiles/dev
+                   {:env {:base-url "http://localhost:3002/"}}]
+             :prod [:shared :profiles/prod
+                    {:env {:base-url "http://localhost:3002/"}}]
+             :app-integration-test {:env {:test-db-host "localhost"
                                           :test-db-name "ebdb_test"
                                           :test-db-port "3306"
                                           :test-db-user "root"

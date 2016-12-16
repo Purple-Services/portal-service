@@ -17,10 +17,16 @@
             [ring.middleware.cors :refer [wrap-cors]]
             [ring.middleware.json :refer [wrap-json-body wrap-json-response]]
             [ring.middleware.stacktrace :refer [wrap-stacktrace-log]]
-            [ring.util.response :refer [header set-cookie response redirect]]))
+            [ring.util.response :refer [header set-cookie response redirect]]
+            [ring.middleware.ssl :refer [wrap-ssl-redirect]]))
 
 (defn wrap-page [resp]
   (header resp "content-type" "text/html; charset=utf-8"))
+
+(defn wrap-force-ssl [resp]
+  (if config/has-ssl?
+    (wrap-ssl-redirect resp)
+    resp))
 
 (defn valid-session-wrapper?
   "given a request, determine if the user-id has a valid session"
@@ -274,113 +280,137 @@
   (GET "/" []
        (-> (pages/portal-app)
            response
+           wrap-force-ssl
            wrap-page))
   ;;!! login / logout
   (GET "/login" []
        (-> (pages/portal-login)
            response
+           wrap-force-ssl
            wrap-page))
-  (POST "/login" {body :body
-                  headers :headers
-                  remote-addr :remote-addr}
-        (let [b (keywordize-keys body)
-              login-result (login/login (:email b) (:password b)
-                                        (or (get headers "x-forwarded-for")
-                                            remote-addr))]
-          (if (:success login-result)
-            (let [user-id (get-in login-result [:user :id])]
-              (-> (response {:success true})
-                  (merge
-                   {:cookies
-                    {"token" {:value (:token login-result)
-                              :http-only true
-                              :max-age 7776000}
-                     "user-id" {:value user-id
-                                :max-age 7776000}}})))
-            (response login-result))))
+  (wrap-force-ssl
+   (POST "/login" {body :body
+                   headers :headers
+                   remote-addr :remote-addr}
+         (let [b (keywordize-keys body)
+               login-result (login/login (:email b) (:password b)
+                                         (or (get headers "x-forwarded-for")
+                                             remote-addr))]
+           (if (:success login-result)
+             (let [user-id (get-in login-result [:user :id])]
+               (-> (response {:success true})
+                   (merge
+                    {:cookies
+                     {"token" {:value (:token login-result)
+                               :http-only true
+                               :max-age 7776000}
+                      "user-id" {:value user-id
+                                 :max-age 7776000}}})))
+             (response login-result)))))
   (GET "/logout" []
        (-> (redirect "/login")
            (set-cookie "token" "null" {:max-age -1})
            (set-cookie "user-id" "null" {:max-age -1})))
   ;; Reset password routes
-  (POST "/forgot-password" {body :body}
-        (response
-         (let [b (keywordize-keys body)]
-           (login/forgot-password ;; 'platform_id' is email address
-            (:email b)))))
-  (GET "/reset-password/:reset-key" [reset-key]
-       (-> (pages/reset-password reset-key)
-           response
-           wrap-page))
-  (POST "/reset-password" {body :body}
-        (response
-         (let [b (keywordize-keys body)]
-           (login/change-password (:reset-key b) (:password b)))))
+  (wrap-force-ssl
+   (POST "/forgot-password" {body :body}
+         (response
+          (let [b (keywordize-keys body)]
+            (login/forgot-password ;; 'platform_id' is email address
+             (:email b))))))
+  (wrap-force-ssl
+   (GET "/reset-password/:reset-key" [reset-key]
+        (-> (pages/reset-password reset-key)
+            response
+            wrap-page)))
+  (wrap-force-ssl
+   (POST "/reset-password" {body :body}
+         (response
+          (let [b (keywordize-keys body)]
+            (login/change-password (:reset-key b) (:password b))))))
   (context "/user/:user-id" [user-id]
            ;; this route is insecure! need to check if user really
            ;; can view this vehicle!
-           (GET "/vehicle/:vehicle-id" [vehicle-id]
-                (response
-                 (vehicles/get-vehicle vehicle-id)))
-           (POST "/add-vehicle" {body :body}
+           (wrap-force-ssl
+            (GET "/vehicle/:vehicle-id" [vehicle-id]
                  (response
-                  (let [new-vehicle (keywordize-keys body)]
-                    (vehicles/create-vehicle! new-vehicle))))
-           (PUT "/edit-vehicle" {body :body}
-                (response
-                 (let [vehicle (keywordize-keys body)]
-                   (vehicles/edit-vehicle! vehicle))))
-           (GET "/vehicles" []
-                (response
-                 (vehicles/user-vehicles user-id)))
-           (PUT "/vehicles" {body :body}
-                (response
-                 (let [vehicle (keywordize-keys body)]
-                   (vehicles/edit-vehicle! vehicle))))
-           (GET "/orders" []
-                (response
-                 (orders/user-orders user-id)))
-           (GET "/email" []
-                (response
-                 {:email (users/get-user-email user-id)}))
-           (GET "/accounts" []
-                (response
-                 (users/user-accounts user-id)))
-           (GET "/is-child-user" []
-                (response
-                 {:is-child-user? (users/is-child-account? user-id)})))
+                  (vehicles/get-vehicle vehicle-id))))
+           (wrap-force-ssl
+            (POST "/add-vehicle" {body :body}
+                  (response
+                   (let [new-vehicle (keywordize-keys body)]
+                     (vehicles/create-vehicle! new-vehicle)))))
+           (wrap-force-ssl
+            (PUT "/edit-vehicle" {body :body}
+                 (response
+                  (let [vehicle (keywordize-keys body)]
+                    (vehicles/edit-vehicle! vehicle)))))
+           (wrap-force-ssl
+            (GET "/vehicles" []
+                 (response
+                  (vehicles/user-vehicles user-id))))
+           (wrap-force-ssl
+            (PUT "/vehicles" {body :body}
+                 (response
+                  (let [vehicle (keywordize-keys body)]
+                    (vehicles/edit-vehicle! vehicle)))))
+           (wrap-force-ssl
+            (GET "/orders" []
+                 (response
+                  (orders/user-orders user-id))))
+           (wrap-force-ssl
+            (GET "/email" []
+                 (response
+                  {:email (users/get-user-email user-id)})))
+           (wrap-force-ssl
+            (GET "/accounts" []
+                 (response
+                  (users/user-accounts user-id))))
+           (wrap-force-ssl
+            (GET "/is-child-user" []
+                 (response
+                  {:is-child-user? (users/is-child-account? user-id)}))))
   (context "/account/:account-id/manager/:manager-id" [account-id manager-id]
-           (GET "/user/:user-id" [user-id]
-                (response
-                 (users/get-user user-id)))
-           (PUT "/edit-user" {body :body}
-                (response
-                 (let [user (keywordize-keys body)]
-                   (accounts/edit-user! account-id user))))
-           (GET "/users" []
-                (response
-                 (accounts/account-users account-id)))
-           (GET "/orders" []
-                (response
-                 (accounts/orders account-id)))
-           (POST "/add-user" {body :body}
+           (wrap-force-ssl
+            (GET "/user/:user-id" [user-id]
                  (response
-                  (let [new-user (keywordize-keys body)]
-                    (accounts/create-child-account! account-id new-user))))
-           (POST "/add-vehicle" {body :body}
+                  (users/get-user user-id))))
+           (wrap-force-ssl
+            (PUT "/edit-user" {body :body}
                  (response
-                  (let [new-vehicle (keywordize-keys body)]
-                    (vehicles/create-vehicle! new-vehicle))))
-           (PUT "/edit-vehicle" {body :body}
-                (response
-                 (let [vehicle (keywordize-keys body)]
-                   (vehicles/edit-vehicle! vehicle))))
-           (GET "/vehicles" []
-                (response
-                 (accounts/account-vehicles account-id)))
-           (GET "/vehicle/:vehicle-id" [vehicle-id]
-                (response
-                 (vehicles/get-vehicle vehicle-id))))
+                  (let [user (keywordize-keys body)]
+                    (accounts/edit-user! account-id user)))))
+           (wrap-force-ssl
+            (GET "/users" []
+                 (response
+                  (accounts/account-users account-id))))
+           (wrap-force-ssl
+            (GET "/orders" []
+                 (response
+                  (accounts/orders account-id))))
+           (wrap-force-ssl
+            (POST "/add-user" {body :body}
+                  (response
+                   (let [new-user (keywordize-keys body)]
+                     (accounts/create-child-account! account-id new-user)))))
+           (wrap-force-ssl
+            (POST "/add-vehicle" {body :body}
+                  (response
+                   (let [new-vehicle (keywordize-keys body)]
+                     (vehicles/create-vehicle! new-vehicle)))))
+           (wrap-force-ssl
+            (PUT "/edit-vehicle" {body :body}
+                 (response
+                  (let [vehicle (keywordize-keys body)]
+                    (vehicles/edit-vehicle! vehicle)))))
+           (wrap-force-ssl
+            (GET "/vehicles" []
+                 (response
+                  (accounts/account-vehicles account-id))))
+           (wrap-force-ssl
+            (GET "/vehicle/:vehicle-id" [vehicle-id]
+                 (response
+                  (vehicles/get-vehicle vehicle-id)))))
   ;; for aws webservices
   (GET "/ok" [] (response {:success true}))
   ;; resources
