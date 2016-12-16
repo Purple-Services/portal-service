@@ -137,6 +137,11 @@
 (def users-refresh-button
   {:xpath "//div[@id='users']//button/i[contains(@class,'fa-refresh')]"})
 
+(deftest ok-route
+  (is (-> (test-utils/get-uri-json
+           :get "/ok")
+          (get-in [:body :success]))))
+
 (deftest account-managers-security
   (with-redefs [common.sendgrid/send-template-email
                 (fn [to subject message
