@@ -12,7 +12,6 @@
                  [compojure "1.5.1"]
                  [enlive "1.1.6"]
                  [org.clojure/clojure "1.9.0-alpha11"]
-                 [ring/ring-core "1.5.0"]
                  [ring/ring-devel "1.5.0"]
                  [ring/ring-json "0.4.0"]
                  [ring/ring-mock "0.3.0"]
