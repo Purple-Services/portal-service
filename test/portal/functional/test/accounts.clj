@@ -132,6 +132,10 @@
   {:xpath "//div[@id='users']//button[contains(text(),'Active')]"})
 (def deactivated-users-filter
   {:xpath "//div[@id='users']//button[contains(text(),'Deactivated')]"})
+(def pending-users-filter
+  {:xpath "//div[@id='users']//button[contains(text(),'Pending')]"})
+(def users-refresh-button
+  {:xpath "//div[@id='users']//button/i[contains(@class,'fa-refresh')]"})
 
 (deftest account-managers-security
   (with-redefs [common.sendgrid/send-template-email
@@ -808,6 +812,11 @@
   (edn/read-string (second (re-matches #".*\(([0-9]*)\)"
                                        (text deactivated-users-filter)))))
 
+(defn pending-users-filter-count
+  []
+  (edn/read-string (second (re-matches #".*\(([0-9]*)\)"
+                                       (text pending-users-filter)))))
+
 (defn users-table-count
   []
   (count (find-elements {:xpath "//div[@id='users']//table/tbody/tr"})))
@@ -866,6 +875,13 @@
   (is (= n
          (deactivated-users-filter-count))))
 
+(defn count-in-pending-users-filter-correct?
+  [n]
+  (wait-until #(= (pending-users-filter-count)
+                  n))
+  (is (= n
+         (pending-users-filter-count))))
+
 (defn deactivate-user-and-check
   [position new-count]
   (deactivate-user-at-position position)
@@ -883,7 +899,7 @@
   (compare-deactivated-users-table-and-filter-buttons))
 
 (defn create-user
-  [{:keys [email name]}]
+  [{:keys [email name phone-number]}]
   (wait-until #(exists? add-users-button))
   (click add-users-button)
   (wait-until #(exists? users-form-email-address))
@@ -891,6 +907,8 @@
   (input-text users-form-email-address email)
   (clear users-form-full-name)
   (input-text users-form-full-name name)
+  (clear users-form-phone-number)
+  (input-text users-form-phone-number phone-number)
   (click users-form-save)
   (wait-until #(exists? users-form-yes))
   (click users-form-yes))
@@ -1020,7 +1038,8 @@
       (click users-form-dismiss)
       ;; create a user
       (create-user {:email child-email
-                    :name child-name})
+                    :name child-name
+                    :phone-number ""})
       ;; check that the user shows up in the pending table
       (wait-until #(exists? users-pending-tab))
       (click users-pending-tab)
@@ -1029,7 +1048,8 @@
                                              :manager? false})
       ;; add a second child user
       (create-user {:email second-child-email
-                    :name second-child-name})
+                    :name second-child-name
+                    :phone-number ""})
       ;; check that the user shows up in the pending table
       (wait-until #(exists? users-pending-tab))
       (click users-pending-tab)
@@ -1038,13 +1058,16 @@
                                                     :manager? false})
       ;; add a third child user
       (create-user {:email third-child-email
-                    :name third-child-name})
+                    :name third-child-name
+                    :phone-number third-child-number})
       ;; check that the user shows up in the pending table
       (wait-until #(exists? users-pending-tab))
       (click users-pending-tab)
-      (compare-user-row-and-map third-child-email {:name third-child-name
-                                                   :email third-child-email
-                                                   :manager? false}))
+      (compare-user-row-and-map third-child-email
+                                {:name third-child-name
+                                 :email third-child-email
+                                 :phone-number third-child-number
+                                 :manager? false}))
     (testing "Manager adds vehicles"
       (click portal/vehicles-link)
       (wait-until #(exists? portal/no-vehicles-message))
@@ -1186,6 +1209,34 @@
       ;; click on the user tab
       (click users-link)
       (wait-until #(exists? add-users-button))
+      ;; check that there are two pending users
+      (count-in-pending-users-filter-correct? 2)
+      (count-in-active-users-filter-correct? 2)
+      (count-in-deactivated-users-filter-correct? 0)
+      ;; set the password for the second child user
+      (is (:success (db/!update
+                     (db/conn) "users"
+                     {:reset_key ""
+                      :password_hash (bcrypt/encrypt child-password)}
+                     {:id (:id (login/get-user-by-email second-child-email))})))
+      ;; click the user refresh button
+      (click users-refresh-button)
+      ;; check that the filter counts are now correct
+      (count-in-pending-users-filter-correct? 1)
+      (count-in-active-users-filter-correct? 3)
+      (count-in-deactivated-users-filter-correct? 0)
+      ;; set the password for the third child user
+      (is (:success (db/!update
+                     (db/conn) "users"
+                     {:reset_key ""
+                      :password_hash (bcrypt/encrypt child-password)}
+                     {:id (:id (login/get-user-by-email third-child-email))})))
+      ;; click the user refresh button
+      (click users-refresh-button)
+      ;; check that the filter counts are now correct
+      (count-in-pending-users-filter-correct? 0)
+      (count-in-active-users-filter-correct? 4)
+      (count-in-deactivated-users-filter-correct? 0)
       ;; check that row count of the active table matches the count in the
       ;; active filter
       (compare-active-users-table-and-filter-buttons)
@@ -1223,25 +1274,24 @@
       (click users-form-save)
       (wait-until #(exists? users-form-yes))
       (click users-form-yes)
-      ;; (println {:name "Qux Quxxer"
-      ;;           :email third-child-email
-      ;;           :manager? false})
       (wait-until #(exists? add-users-button))
-      (compare-user-row-and-map third-child-email {:name "Qux Quxxer"
-                                                   :email third-child-email
-                                                   :manager? false})
+      (compare-user-row-and-map third-child-email
+                                {:name "Qux Quxxer"
+                                 :email third-child-email
+                                 :phone-number third-child-number
+                                 :manager? false})
       ;; check that only the phone number can be edited
       (edit-user third-child-email)
       (wait-until #(exists? users-form-full-name))
       (clear users-form-phone-number)
-      (input-text users-form-phone-number "800-555-1212")
+      (input-text users-form-phone-number "800-555-1111")
       (click users-form-save)
       (wait-until #(exists? users-form-yes))
       (click users-form-yes)
       (wait-until #(exists? add-users-button))
       (compare-user-row-and-map third-child-email {:name "Qux Quxxer"
                                                    :email third-child-email
-                                                   :phone-number "800-555-1212"
+                                                   :phone-number "800-555-1111"
                                                    :manager? false})
       ;; check that name and phone number can be edited together
       (edit-user third-child-email)
