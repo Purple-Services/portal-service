@@ -388,11 +388,7 @@
                 (response
                  (vehicles/get-vehicle vehicle-id))))
   ;; resources
-  (route/resources "/")
-  (route/not-found
-   {:status 404
-    :body (pages/portal-not-found)
-    :title "Page not found"}))
+  (route/resources "/"))
 
 (defn wrap-fallback-exception
   "Catch exceptions and present a server error message with handler, h"
@@ -410,7 +406,11 @@
 (defroutes all-routes
   (wrap-force-ssl portal-routes)
   ;; for aws webservices
-  (GET "/ok" [] (response {:success true})))
+  (GET "/ok" [] (response {:success true}))
+  (route/not-found
+   {:status 404
+    :body (pages/portal-not-found)
+    :title "Page not found"}))
 
 (def handler
   (->
