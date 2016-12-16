@@ -129,6 +129,10 @@ tbody > tr.active > td {
     color: #3498db;
     font-weight: normal;
     cursor: pointer;
+    text-decoration: none;}
+
+.fake-link:hover {
+    color:#F88458;
     text-decoration: none;
 }
 
@@ -239,3 +243,5 @@ thead > tr > .fake-link {
     font-size: 16px;
     font-weight: bolder;
 }
+
+button:focus {outline:0 !important;}
