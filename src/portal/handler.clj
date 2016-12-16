@@ -16,11 +16,17 @@
             [ring.middleware.cookies :refer [wrap-cookies]]
             [ring.middleware.cors :refer [wrap-cors]]
             [ring.middleware.json :refer [wrap-json-body wrap-json-response]]
+            [ring.middleware.ssl :refer [wrap-ssl-redirect]]
             [ring.middleware.stacktrace :refer [wrap-stacktrace-log]]
             [ring.util.response :refer [header set-cookie response redirect]]))
 
 (defn wrap-page [resp]
   (header resp "content-type" "text/html; charset=utf-8"))
+
+(defn wrap-force-ssl [resp]
+  (if config/has-ssl?
+    (wrap-ssl-redirect resp)
+    resp))
 
 (defn valid-session-wrapper?
   "given a request, determine if the user-id has a valid session"
@@ -381,8 +387,6 @@
            (GET "/vehicle/:vehicle-id" [vehicle-id]
                 (response
                  (vehicles/get-vehicle vehicle-id))))
-  ;; for aws webservices
-  (GET "/ok" [] (response {:success true}))
   ;; resources
   (route/resources "/")
   (route/not-found
@@ -403,9 +407,14 @@
             {:status 500 :body "Server Error - 500 Placeholder"})))
       (h request))))
 
+(defroutes all-routes
+  (wrap-force-ssl portal-routes)
+  ;; for aws webservices
+  (GET "/ok" [] (response {:success true})))
+
 (def handler
   (->
-   portal-routes
+   all-routes
    (wrap-cors :access-control-allow-origin [#".*"]
               :access-control-allow-methods [:get :put :post :delete])
    (wrap-access-rules {:rules login-rules})
