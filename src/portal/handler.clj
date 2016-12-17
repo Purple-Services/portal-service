@@ -402,6 +402,7 @@
       (h request))))
 
 (defroutes all-routes
+  portal-routes
   ;; for aws webservices
   (GET "/ok" [] (response {:success true}))
   (route/not-found
