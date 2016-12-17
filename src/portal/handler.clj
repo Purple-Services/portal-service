@@ -24,11 +24,6 @@
 (defn wrap-page [resp]
   (header resp "content-type" "text/html; charset=utf-8"))
 
-(defn wrap-force-ssl [resp]
-  (if config/has-ssl?
-    (wrap-ssl-redirect resp)
-    resp))
-
 (defn valid-session-wrapper?
   "given a request, determine if the user-id has a valid session"
   [request]
@@ -283,111 +278,113 @@
            response
            wrap-page))
   ;;!! login / logout
-  (GET "/login" []
-       (-> (pages/portal-login)
-           response
-           wrap-page))
-   (POST "/login" {body :body
-                   headers :headers
-                   remote-addr :remote-addr}
-         (let [b (keywordize-keys body)
-               login-result (login/login (:email b) (:password b)
-                                         (or (get headers "x-forwarded-for")
-                                             remote-addr))]
-           (if (:success login-result)
-             (let [user-id (get-in login-result [:user :id])]
-               (-> (response {:success true})
-                   (merge
-                    {:cookies
-                     {"token" {:value (:token login-result)
-                               :http-only true
-                               :max-age 7776000}
-                      "user-id" {:value user-id
-                                 :max-age 7776000}}})))
-             (response login-result))))
+  (GET "/login" {scheme :scheme}
+       (if (and config/has-ssl? (not= :https scheme))
+         (redirect config/base-url)
+         (-> (pages/portal-login)
+             response
+             wrap-page)))
+  (POST "/login" {body :body
+                  headers :headers
+                  remote-addr :remote-addr}
+        (let [b (keywordize-keys body)
+              login-result (login/login (:email b) (:password b)
+                                        (or (get headers "x-forwarded-for")
+                                            remote-addr))]
+          (if (:success login-result)
+            (let [user-id (get-in login-result [:user :id])]
+              (-> (response {:success true})
+                  (merge
+                   {:cookies
+                    {"token" {:value (:token login-result)
+                              :http-only true
+                              :max-age 7776000}
+                     "user-id" {:value user-id
+                                :max-age 7776000}}})))
+            (response login-result))))
   (GET "/logout" []
        (-> (redirect "/login")
            (set-cookie "token" "null" {:max-age -1})
            (set-cookie "user-id" "null" {:max-age -1})))
   ;; Reset password routes
-   (POST "/forgot-password" {body :body}
-         (response
-          (let [b (keywordize-keys body)]
-            (login/forgot-password ;; 'platform_id' is email address
-             (:email b)))))
-   (GET "/reset-password/:reset-key" [reset-key]
-        (-> (pages/reset-password reset-key)
-            response
-            wrap-page))
-   (POST "/reset-password" {body :body}
-         (response
-          (let [b (keywordize-keys body)]
-            (login/change-password (:reset-key b) (:password b)))))
+  (POST "/forgot-password" {body :body}
+        (response
+         (let [b (keywordize-keys body)]
+           (login/forgot-password ;; 'platform_id' is email address
+            (:email b)))))
+  (GET "/reset-password/:reset-key" [reset-key]
+       (-> (pages/reset-password reset-key)
+           response
+           wrap-page))
+  (POST "/reset-password" {body :body}
+        (response
+         (let [b (keywordize-keys body)]
+           (login/change-password (:reset-key b) (:password b)))))
   (context "/user/:user-id" [user-id]
            ;; this route is insecure! need to check if user really
            ;; can view this vehicle!
-            (GET "/vehicle/:vehicle-id" [vehicle-id]
+           (GET "/vehicle/:vehicle-id" [vehicle-id]
+                (response
+                 (vehicles/get-vehicle vehicle-id)))
+           (POST "/add-vehicle" {body :body}
                  (response
-                  (vehicles/get-vehicle vehicle-id)))
-            (POST "/add-vehicle" {body :body}
-                  (response
-                   (let [new-vehicle (keywordize-keys body)]
-                     (vehicles/create-vehicle! new-vehicle))))
-            (PUT "/edit-vehicle" {body :body}
-                 (response
-                  (let [vehicle (keywordize-keys body)]
-                    (vehicles/edit-vehicle! vehicle))))
-            (GET "/vehicles" []
-                 (response
-                  (vehicles/user-vehicles user-id)))
-            (PUT "/vehicles" {body :body}
-                 (response
-                  (let [vehicle (keywordize-keys body)]
-                    (vehicles/edit-vehicle! vehicle))))
-            (GET "/orders" []
-                 (response
-                  (orders/user-orders user-id)))
-            (GET "/email" []
-                 (response
-                  {:email (users/get-user-email user-id)}))
-            (GET "/accounts" []
-                 (response
-                  (users/user-accounts user-id)))
-            (GET "/is-child-user" []
-                 (response
-                  {:is-child-user? (users/is-child-account? user-id)})))
+                  (let [new-vehicle (keywordize-keys body)]
+                    (vehicles/create-vehicle! new-vehicle))))
+           (PUT "/edit-vehicle" {body :body}
+                (response
+                 (let [vehicle (keywordize-keys body)]
+                   (vehicles/edit-vehicle! vehicle))))
+           (GET "/vehicles" []
+                (response
+                 (vehicles/user-vehicles user-id)))
+           (PUT "/vehicles" {body :body}
+                (response
+                 (let [vehicle (keywordize-keys body)]
+                   (vehicles/edit-vehicle! vehicle))))
+           (GET "/orders" []
+                (response
+                 (orders/user-orders user-id)))
+           (GET "/email" []
+                (response
+                 {:email (users/get-user-email user-id)}))
+           (GET "/accounts" []
+                (response
+                 (users/user-accounts user-id)))
+           (GET "/is-child-user" []
+                (response
+                 {:is-child-user? (users/is-child-account? user-id)})))
   (context "/account/:account-id/manager/:manager-id" [account-id manager-id]
-            (GET "/user/:user-id" [user-id]
+           (GET "/user/:user-id" [user-id]
+                (response
+                 (users/get-user user-id)))
+           (PUT "/edit-user" {body :body}
+                (response
+                 (let [user (keywordize-keys body)]
+                   (accounts/edit-user! account-id user))))
+           (GET "/users" []
+                (response
+                 (accounts/account-users account-id)))
+           (GET "/orders" []
+                (response
+                 (accounts/orders account-id)))
+           (POST "/add-user" {body :body}
                  (response
-                  (users/get-user user-id)))
-            (PUT "/edit-user" {body :body}
+                  (let [new-user (keywordize-keys body)]
+                    (accounts/create-child-account! account-id new-user))))
+           (POST "/add-vehicle" {body :body}
                  (response
-                  (let [user (keywordize-keys body)]
-                    (accounts/edit-user! account-id user))))
-            (GET "/users" []
-                 (response
-                  (accounts/account-users account-id)))
-            (GET "/orders" []
-                 (response
-                  (accounts/orders account-id)))
-            (POST "/add-user" {body :body}
-                  (response
-                   (let [new-user (keywordize-keys body)]
-                     (accounts/create-child-account! account-id new-user))))
-            (POST "/add-vehicle" {body :body}
-                  (response
-                   (let [new-vehicle (keywordize-keys body)]
-                     (vehicles/create-vehicle! new-vehicle))))
-            (PUT "/edit-vehicle" {body :body}
-                 (response
-                  (let [vehicle (keywordize-keys body)]
-                    (vehicles/edit-vehicle! vehicle))))
-            (GET "/vehicles" []
-                 (response
-                  (accounts/account-vehicles account-id)))
-            (GET "/vehicle/:vehicle-id" [vehicle-id]
-                 (response
-                  (vehicles/get-vehicle vehicle-id))))
+                  (let [new-vehicle (keywordize-keys body)]
+                    (vehicles/create-vehicle! new-vehicle))))
+           (PUT "/edit-vehicle" {body :body}
+                (response
+                 (let [vehicle (keywordize-keys body)]
+                   (vehicles/edit-vehicle! vehicle))))
+           (GET "/vehicles" []
+                (response
+                 (accounts/account-vehicles account-id)))
+           (GET "/vehicle/:vehicle-id" [vehicle-id]
+                (response
+                 (vehicles/get-vehicle vehicle-id))))
   ;; resources
   (route/resources "/"))
 
@@ -405,7 +402,6 @@
       (h request))))
 
 (defroutes all-routes
-  (wrap-force-ssl portal-routes)
   ;; for aws webservices
   (GET "/ok" [] (response {:success true}))
   (route/not-found
@@ -414,13 +410,12 @@
     :title "Page not found"}))
 
 (def handler
-  (->
-   all-routes
-   (wrap-cors :access-control-allow-origin [#".*"]
-              :access-control-allow-methods [:get :put :post :delete])
-   (wrap-access-rules {:rules login-rules})
-   (wrap-cookies)
-   (wrap-json-body)
-   (wrap-json-response)
-   (wrap-stacktrace-log)
-   (wrap-fallback-exception)))
+  (-> all-routes
+      (wrap-cors :access-control-allow-origin [#".*"]
+                 :access-control-allow-methods [:get :put :post :delete])
+      (wrap-access-rules {:rules login-rules})
+      (wrap-cookies)
+      (wrap-json-body)
+      (wrap-json-response)
+      (wrap-stacktrace-log)
+      (wrap-fallback-exception)))

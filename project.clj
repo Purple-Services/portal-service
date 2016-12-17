@@ -47,13 +47,14 @@
                    {:env {:base-url "http://localhost:3002/"}}]
              :prod [:shared :profiles/prod
                     {:env {:base-url "http://localhost:3002/"}}]
-             :app-integration-test {:env {:test-db-host "localhost"
-                                          :test-db-name "ebdb_test"
-                                          :test-db-port "3306"
-                                          :test-db-user "root"
-                                          :test-db-password ""}
-                                    :jvm-opts ["-Dwebdriver.chrome.driver=/usr/lib/chromium-browser/chromedriver"]
-                                    :plugins [[lein-environ "1.1.0"]]}
+             :app-integration-test [:shared
+                                    {:env {:test-db-host "localhost"
+                                           :test-db-name "ebdb_test"
+                                           :test-db-port "3306"
+                                           :test-db-user "root"
+                                           :test-db-password ""}
+                                     :jvm-opts ["-Dwebdriver.chrome.driver=/usr/lib/chromium-browser/chromedriver"]
+                                     :plugins [[lein-environ "1.1.0"]]}]
              :app-integration-dev-deploy
              {:aws {:access-key ~(System/getenv "AWS_ACCESS_KEY")
                     :secret-key ~(System/getenv "AWS_SECRET_KEY")}}})
