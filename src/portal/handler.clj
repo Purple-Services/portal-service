@@ -18,15 +18,11 @@
             [ring.middleware.json :refer [wrap-json-body wrap-json-response]]
             [ring.middleware.ssl :refer [wrap-ssl-redirect]]
             [ring.middleware.stacktrace :refer [wrap-stacktrace-log]]
-            [ring.util.response :refer [header set-cookie response redirect]]))
+            [ring.util.response :refer [header set-cookie response redirect]]
+            [ring.middleware.ssl :refer [wrap-ssl-redirect]]))
 
 (defn wrap-page [resp]
   (header resp "content-type" "text/html; charset=utf-8"))
-
-(defn wrap-force-ssl [resp]
-  (if config/has-ssl?
-    (wrap-ssl-redirect resp)
-    resp))
 
 (defn valid-session-wrapper?
   "given a request, determine if the user-id has a valid session"
@@ -282,10 +278,12 @@
            response
            wrap-page))
   ;;!! login / logout
-  (GET "/login" []
-       (-> (pages/portal-login)
-           response
-           wrap-page))
+  (GET "/login" {scheme :scheme}
+       (if (and config/has-ssl? (not= :https scheme))
+         (redirect config/base-url)
+         (-> (pages/portal-login)
+             response
+             wrap-page)))
   (POST "/login" {body :body
                   headers :headers
                   remote-addr :remote-addr}
@@ -404,7 +402,7 @@
       (h request))))
 
 (defroutes all-routes
-  (wrap-force-ssl portal-routes)
+  portal-routes
   ;; for aws webservices
   (GET "/ok" [] (response {:success true}))
   (route/not-found
@@ -413,13 +411,12 @@
     :title "Page not found"}))
 
 (def handler
-  (->
-   all-routes
-   (wrap-cors :access-control-allow-origin [#".*"]
-              :access-control-allow-methods [:get :put :post :delete])
-   (wrap-access-rules {:rules login-rules})
-   (wrap-cookies)
-   (wrap-json-body)
-   (wrap-json-response)
-   (wrap-stacktrace-log)
-   (wrap-fallback-exception)))
+  (-> all-routes
+      (wrap-cors :access-control-allow-origin [#".*"]
+                 :access-control-allow-methods [:get :put :post :delete])
+      (wrap-access-rules {:rules login-rules})
+      (wrap-cookies)
+      (wrap-json-body)
+      (wrap-json-response)
+      (wrap-stacktrace-log)
+      (wrap-fallback-exception)))
