@@ -25,7 +25,9 @@
          :auto-refresh? false
          :browser-uri "/"
          :reload-paths ["src"]}
-  :aws {:beanstalk {:environments [{:name "portal-dev"}]
+  :aws {:beanstalk {:app-name "portal"
+                    :environments [{:name "portal-dev"}
+                                   {:name "portal-prod"}]
                     :s3-bucket "leinbeanstalkpurple"
                     :region "us-west-2"}}
   :profiles {:app-integration-test {:dependencies [[org.seleniumhq.selenium/selenium-java "2.48.2"]
