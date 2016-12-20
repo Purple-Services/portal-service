@@ -279,7 +279,7 @@
            wrap-page))
   ;;!! login / logout
   (GET "/login" {scheme :scheme}
-       (if false ;; (and config/has-ssl? (not= :https scheme))
+       (if (and config/has-ssl? (not= :https scheme))
          (redirect config/base-url)
          (-> (pages/portal-login)
              response
