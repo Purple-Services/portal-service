@@ -32,7 +32,14 @@
                 :db-password (env :test-db-password)}))
 
 ;; if you want to use different pools, do a
-;; (set-new-db-pool! <config-file>)
+;; (set-new-db-pool!
+;;  (ebdb-config {:db-host <host>
+;;                :db-port <db-port>
+;;                :db-name <db-name>
+;;                :db-user <db-user>
+;;                :db-password <db-passowrd}))
+;; or
+;; (set-new-db-pool! ebdb-test-config)
 ;; be sure to run it again after connecting to the remote dev
 ;; database so that you are sure to close the connection
 ;; ex:
