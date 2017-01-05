@@ -145,7 +145,7 @@
            :substitutions
            {:%RESETLINK%
             (str "Please click the link below to set your password:"
-                 "<br />" "https://purpledelivery.com/" "reset-password/"
+                 "<br />" "https://purpledelivery.com/user/reset-password/"
                  reset-key)
             :%NAME% name})
           {:success true
