@@ -16,7 +16,7 @@
 
 (deftemplate portal-login-template "templates/index.html"
   [x]
-  [:title] (content "Purple App Portal")
+  [:title] (content "Purple Dashboard")
 
   [:#pikaday-css] unwrap
 
@@ -54,7 +54,7 @@
 
 (deftemplate portal-app-template "templates/index.html"
   [x]
-  [:title] (content "Purple App Portal")
+  [:title] (content "Purple Dashboard")
 
   [:#pikaday-css] unwrap
 
@@ -101,7 +101,7 @@
 
 (deftemplate reset-password-template "templates/index.html"
   [x]
-  [:title] (content "Purple App - Reset Password")
+  [:title] (content "Purple - Reset Password")
 
   [:#pikaday-css] unwrap
 
