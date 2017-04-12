@@ -30,17 +30,36 @@
                                    {:name "portal-prod"}]
                     :s3-bucket "leinbeanstalkpurple"
                     :region "us-west-2"}}
-  :profiles {:app-integration-test {:dependencies [[org.seleniumhq.selenium/selenium-java "2.48.2"]
-                                                   [clj-webdriver "0.7.2"]
-                                                   [ring/ring-jetty-adapter "1.5.0"]
-                                                   [ring/ring-mock "0.3.0"]]
-                                    :env {:test-db-host "localhost"
+  :profiles {:default [:base :system :user :provided :local]
+             :shared [{:dependencies
+                       [[javax.servlet/servlet-api "2.5"]
+                        [ring/ring-mock "0.3.0"]
+                        [org.seleniumhq.selenium/selenium-java "2.47.1"]
+                        [clj-webdriver "0.7.2"]
+                        [ring "1.5.0"]
+                        [pjstadig/humane-test-output "0.6.0"]]
+                       :injections
+                       [(require 'pjstadig.humane-test-output)
+                        (pjstadig.humane-test-output/activate!)]}]
+             :local [:shared :profiles/local
+                     {:env {:base-url "http://localhost:3002/"}}]
+             :dev [:shared :profiles/dev
+                   {:env {:base-url "http://localhost:3002/"}}]
+             :prod [:shared :profiles/prod
+                    {:env {:base-url "http://localhost:3002/"}}]
+             :app-integration-test {:env {:test-db-host "localhost"
                                           :test-db-name "ebdb_test"
                                           :test-db-port "3306"
                                           :test-db-user "root"
                                           :test-db-password ""}
                                     :jvm-opts ["-Dwebdriver.chrome.driver=/usr/lib/chromium-browser/chromedriver"]
-                                    :plugins [[lein-environ "1.1.0"]]}
+                                    :plugins [[lein-environ "1.1.0"]]
+                                    :dependencies
+                                    [[javax.servlet/servlet-api "2.5"]
+                                     [ring/ring-mock "0.3.0"]
+                                     [org.seleniumhq.selenium/selenium-java "2.47.1"]
+                                     [clj-webdriver "0.7.2"]
+                                     [pjstadig/humane-test-output "0.6.0"]]}
              :app-integration-dev-deploy
              {:aws {:access-key ~(System/getenv "AWS_ACCESS_KEY")
                     :secret-key ~(System/getenv "AWS_SECRET_KEY")}}})

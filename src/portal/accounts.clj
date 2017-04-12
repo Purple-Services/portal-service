@@ -57,10 +57,15 @@
     (boolean (not (empty?
                    (filter #(= user-id (:id %)) account-children))))))
 
+(defn get-account-by-id
+  "Given an account id, return that account"
+  [account-id]
+  (first (db/!select (db/conn) "accounts" ["*"] {:id account-id})))
+
 (defn get-account-by-name
-  "Given an account name, return the id associated with that account"
+  "Given an account name, return that account"
   [account-name]
-  (first (db/!select (db/conn) "accounts" [:id :name] {:name account-name})))
+  (first (db/!select (db/conn) "accounts" ["*"] {:name account-name})))
 
 (defn create-account!
   "Given an account-name, create it in the database"
@@ -120,20 +125,26 @@
         :else
         (let [{:keys [email name phone_number]
                :or {phone_number ""}} new-user
-               new-user-id (util/rand-str-alpha-num 20)
-               reset-key (util/rand-str-alpha-num 22)]
+              new-user-id (util/rand-str-alpha-num 20)
+              reset-key (util/rand-str-alpha-num 22)
+              account (get-account-by-id account-id)]
           ;; register a user with a blank password
           ;; will not be able to login without resetting
           ;; password
           (db/!insert (db/conn) "users"
-                      {:id new-user-id
-                       :email email
-                       :type "native"
-                       :password_hash ""
-                       :reset_key reset-key
-                       :phone_number phone_number
-                       :phone_number_verified 0
-                       :name name})
+                      (merge {:id new-user-id
+                              :email email
+                              :type "native"
+                              :password_hash ""
+                              :reset_key reset-key
+                              :phone_number phone_number
+                              :phone_number_verified 0
+                              :name name}
+                             (when (:auto_apply_subscription_id account)
+                               {:subscription_id (:auto_apply_subscription_id account)
+                                :subscription_period_start_time 1466196364
+                                :subscription_expiration_time 2147483647
+                                :subscription_auto_renew 0})))
           ;; add the user to account_children
           (associate-child-account! new-user-id account-id)
           ;; send an email to the user
